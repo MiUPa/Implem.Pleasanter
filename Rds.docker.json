@@ -1,0 +1,13 @@
+{
+    "Dbms": "PostgreSQL",
+    "Provider": "Local",
+    "SaConnectionString": "Server=db;Database=pleasanter;UID=sa;PWD=pleasanter",
+    "OwnerConnectionString": "Server=db;Database=pleasanter;UID=sa;PWD=pleasanter",
+    "UserConnectionString": "Server=db;Database=pleasanter;UID=sa;PWD=pleasanter",
+    "SqlCommandTimeOut": 0,
+    "MinimumTime": 3,
+    "DeadlockRetryCount": 4,
+    "DeadlockRetryInterval": 1000,
+    "DisableIndexChangeDetection": true,
+    "SysLogsSchemaVersion": 1
+} 

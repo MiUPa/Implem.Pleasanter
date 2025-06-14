@@ -3193,6 +3193,52 @@ namespace Implem.Pleasanter.Models
             }
         }
 
+        public ContentResultInheritance ExportSitePackageByApi(Context context)
+        {
+            SetSite(
+                context: context,
+                initSiteSettings: true);
+            if (!Site.WithinApiLimits(context: context))
+            {
+                return ApiResults.Get(ApiResponses.OverLimitApi(
+                    context: context,
+                    siteId: Site.SiteId,
+                    limitPerSite: context.ContractSettings.ApiLimit()));
+            }
+            switch (Site.ReferenceType)
+            {
+                case "Sites":
+                case "Issues":
+                case "Results":
+                case "Wikis":
+                case "Dashboards":
+                    var sitePackage = Libraries.SitePackages.Utilities.GetSitePackage(
+                        context: context,
+                        ss: Site.SiteSettings,
+                        apiData: context.RequestDataString.Deserialize<Sites.SitePackageApiModel>());
+                    if (sitePackage == null)
+                    {
+                        return ApiResults.Get(ApiResponses.BadRequest(context: context));
+                    }
+                    var useIndentOption = context.QueryStrings.Bool("UseIndentOption");
+                    var jsonContent = sitePackage.RecordingJson(
+                        context: context,
+                        formatting: useIndentOption
+                            ? Newtonsoft.Json.Formatting.Indented
+                            : Newtonsoft.Json.Formatting.None);
+                    return ApiResults.Get(
+                        statusCode: 200,
+                        limitPerDate: context.ContractSettings.ApiLimit(),
+                        limitRemaining: context.ContractSettings.ApiLimit() - Site.SiteSettings.ApiCount,
+                        response: new
+                        {
+                            Data = jsonContent
+                        });
+                default:
+                    return ApiResults.Get(ApiResponses.BadRequest(context: context));
+            }
+        }
+
         public ContentResultInheritance CopySitePackageByApi(Context context)
         {
             SetSite(

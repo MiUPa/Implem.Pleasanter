@@ -3,5 +3,14 @@
     "Enabled": true,
     "PageSize": 200,
     "LimitPerSite": 0,
-    "Compatibility_1_3_12": false
+    "Compatibility_1_3_12": false,
+    "Api": {
+        "Enabled": true,
+        "Items": {
+            "Get": true,
+            "Create": true,
+            "Update": true,
+            "Delete": true
+        }
+    }
 }
