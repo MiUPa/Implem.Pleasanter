@@ -145,9 +145,22 @@ docker-compose -f docker-compose.ssl.yml build --no-cache
 log_step "コンテナを起動中（SSL証明書取得前）..."
 docker-compose -f docker-compose.ssl.yml up -d nginx
 
+# Nginxコンテナが完全に起動するまで待機
+log_step "Nginxコンテナの起動を待機中..."
+sleep 15
+
+# Nginxコンテナ内で/var/www/htmlディレクトリが作成されているか確認
+log_step "Nginxコンテナ内のディレクトリを確認中..."
+if docker-compose -f docker-compose.ssl.yml exec nginx test -d /var/www/html; then
+    log_info "Nginxコンテナ内の/var/www/htmlディレクトリが正常に作成されました"
+else
+    log_error "Nginxコンテナ内の/var/www/htmlディレクトリの作成に失敗しました"
+    docker-compose -f docker-compose.ssl.yml logs nginx
+    exit 1
+fi
+
 # SSL証明書の取得
 log_step "SSL証明書を取得中..."
-sleep 10
 
 # CertbotでSSL証明書を取得
 docker-compose -f docker-compose.ssl.yml run --rm certbot certonly \
