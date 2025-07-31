@@ -37,7 +37,7 @@ chmod +x deploy.sh
 sudo ./deploy.sh
 ```
 
-5. ブラウザで`http://サーバーのIPアドレス:8080`にアクセスします。
+5. ブラウザで`https://サーバーのドメイン名`または`https://サーバーのIPアドレス`にアクセスします。
 
 ## 環境設定
 
@@ -46,9 +46,14 @@ sudo ./deploy.sh
 - `POSTGRES_USER`: PostgreSQLのユーザー名
 - `POSTGRES_PASSWORD`: PostgreSQLのパスワード
 - `POSTGRES_DB`: PostgreSQLのデータベース名
-- `PLEASANTER_PORT`: Pleasanterのポート番号（デフォルト: 8080）
+- `SERVER_NAME`: サーバーのドメイン名またはIPアドレス（SSL証明書に使用）
+- `PLEASANTER_PORT`: Pleasanterの内部ポート番号（通常は変更不要）
 - `TIMEZONE`: タイムゾーン（デフォルト: Asia/Tokyo）
 - `DEFAULT_LANGUAGE`: デフォルト言語（デフォルト: ja）
+
+## SSL証明書
+
+デプロイ時に自己署名SSL証明書が自動的に生成されます。本番環境では、Let's Encryptなどの正式な証明書を使用することをお勧めします。
 
 ## データの永続化
 
@@ -84,6 +89,10 @@ docker-compose logs
 ### データベース接続エラーの場合
 
 `.env`ファイルの接続文字列を確認します。
+
+### SSL証明書の警告が表示される場合
+
+自己署名証明書を使用しているため、ブラウザで警告が表示されます。これは正常な動作です。本番環境では、Let's Encryptなどの正式な証明書を使用してください。
 
 ## メンテナンス
 
