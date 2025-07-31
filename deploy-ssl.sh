@@ -55,15 +55,69 @@ log_info "SSLメール: $SSL_EMAIL"
 # 前提条件の確認
 log_step "前提条件の確認中..."
 
-# Docker と Docker Compose の確認
+# Docker の確認とインストール
 if ! command -v docker &> /dev/null; then
-    log_error "Docker がインストールされていません。"
-    exit 1
+    log_warn "Docker がインストールされていません。インストールを開始します..."
+    
+    # OS判定
+    if command -v apt-get &> /dev/null; then
+        # Ubuntu/Debian
+        log_info "Ubuntu/Debian 用のDockerをインストール中..."
+        sudo apt-get update
+        sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+        sudo apt-get update
+        sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+        sudo systemctl start docker
+        sudo systemctl enable docker
+        sudo usermod -aG docker $USER
+        log_info "Docker のインストールが完了しました"
+    elif command -v yum &> /dev/null; then
+        # CentOS/RHEL
+        log_info "CentOS/RHEL 用のDockerをインストール中..."
+        sudo yum install -y yum-utils
+        sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+        sudo yum install -y docker-ce docker-ce-cli containerd.io
+        sudo systemctl start docker
+        sudo systemctl enable docker
+        sudo usermod -aG docker $USER
+        log_info "Docker のインストールが完了しました"
+    else
+        log_error "サポートされていないOSです。手動でDockerをインストールしてください。"
+        exit 1
+    fi
+else
+    log_info "Docker は既にインストールされています"
 fi
 
+# Docker Compose の確認とインストール
 if ! command -v docker-compose &> /dev/null; then
-    log_error "Docker Compose がインストールされていません。"
-    exit 1
+    log_warn "Docker Compose がインストールされていません。インストールを開始します..."
+    
+    if command -v apt-get &> /dev/null; then
+        # Ubuntu/Debian
+        log_info "Ubuntu/Debian 用のDocker Composeをインストール中..."
+        sudo apt-get update
+        sudo apt-get install -y docker-compose-plugin
+        # 従来のdocker-composeもインストール
+        sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        sudo chmod +x /usr/local/bin/docker-compose
+    elif command -v yum &> /dev/null; then
+        # CentOS/RHEL
+        log_info "CentOS/RHEL 用のDocker Composeをインストール中..."
+        sudo yum install -y docker-compose-plugin
+        # 従来のdocker-composeもインストール
+        sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        sudo chmod +x /usr/local/bin/docker-compose
+    else
+        log_error "サポートされていないOSです。手動でDocker Composeをインストールしてください。"
+        exit 1
+    fi
+    
+    log_info "Docker Compose のインストールが完了しました"
+else
+    log_info "Docker Compose は既にインストールされています"
 fi
 
 # 必要なディレクトリの作成
