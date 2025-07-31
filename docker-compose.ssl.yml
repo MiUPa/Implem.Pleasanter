@@ -72,6 +72,11 @@ services:
       - Implem.Pleasanter
     networks:
       - default
+    command: >
+      sh -c "
+        mkdir -p /var/www/html &&
+        nginx -g 'daemon off;'
+      "
 
   certbot:
     image: certbot/certbot
