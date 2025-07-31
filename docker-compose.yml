@@ -1,6 +1,22 @@
 version: '3.5'
 
 services:
+  nginx:
+    image: nginx:stable
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./nginx/logs:/var/log/nginx
+    depends_on:
+      - Implem.Pleasanter
+    restart: always
+    networks:
+      - default
+
   Implem.Pleasanter:
     build:
       context: .
@@ -12,8 +28,11 @@ services:
       - TZ=${TIMEZONE:-Asia/Tokyo}
     image: implem.pleasanter
     container_name: pleasanter
-    ports:
-      - "${PLEASANTER_PORT:-8080}:8080"
+    # ポート公開はNginxを通じて行うため、ここでは公開しない
+    # ports:
+    #   - "${PLEASANTER_PORT:-8080}:8080"
+    expose:
+      - "8080"
     depends_on:
       - db
     restart: always
