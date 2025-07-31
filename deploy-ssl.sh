@@ -143,7 +143,7 @@ docker-compose -f docker-compose.ssl.yml build --no-cache
 
 # コンテナを起動（SSL証明書取得前）- CodeDefinerは起動しない
 log_step "コンテナを起動中（SSL証明書取得前）..."
-docker-compose -f docker-compose.ssl.yml up -d db pleasanter-ssl nginx-ssl
+docker-compose -f docker-compose.ssl.yml up -d db Implem.Pleasanter nginx
 
 # Nginxコンテナが完全に起動するまで待機
 log_step "Nginxコンテナの起動を待機中..."
@@ -151,11 +151,11 @@ sleep 15
 
 # Nginxコンテナ内で/var/www/htmlディレクトリが作成されているか確認
 log_step "Nginxコンテナ内のディレクトリを確認中..."
-if docker-compose -f docker-compose.ssl.yml exec nginx-ssl test -d /var/www/html; then
+if docker-compose -f docker-compose.ssl.yml exec nginx test -d /var/www/html; then
     log_info "Nginxコンテナ内の/var/www/htmlディレクトリが正常に作成されました"
 else
     log_error "Nginxコンテナ内の/var/www/htmlディレクトリの作成に失敗しました"
-    docker-compose -f docker-compose.ssl.yml logs nginx-ssl
+    docker-compose -f docker-compose.ssl.yml logs nginx
     exit 1
 fi
 
@@ -221,7 +221,7 @@ docker-compose -f docker-compose.ssl.yml ps
 
 # SSL証明書の更新用cronジョブの設定
 log_step "SSL証明書の自動更新を設定中..."
-(crontab -l 2>/dev/null; echo "0 12 * * * cd $(pwd) && docker-compose -f docker-compose.ssl.yml run --rm certbot renew && docker-compose -f docker-compose.ssl.yml restart nginx-ssl") | crontab -
+(crontab -l 2>/dev/null; echo "0 12 * * * cd $(pwd) && docker-compose -f docker-compose.ssl.yml run --rm certbot renew && docker-compose -f docker-compose.ssl.yml restart nginx") | crontab -
 
 log_info "=========================================="
 log_info "SSL対応デプロイメントが完了しました！"
