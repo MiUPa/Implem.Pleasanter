@@ -1,0 +1,70 @@
+version: '3.5'
+
+services:
+  Implem.Pleasanter:
+    build:
+      context: .
+      dockerfile: ./Implem.Pleasanter/Dockerfile
+    environment:
+        - Implem.Pleasanter_Rds_PostgreSQL_SaConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_SaConnectionString}
+        - Implem.Pleasanter_Rds_PostgreSQL_OwnerConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_OwnerConnectionString}
+        - Implem.Pleasanter_Rds_PostgreSQL_UserConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_UserConnectionString}
+        - ASPNETCORE_ENVIRONMENT=Development
+        - ASPNETCORE_URLS=http://+:80
+    image: implem.pleasanter:local
+    container_name: pleasanter-local
+    restart: unless-stopped
+    depends_on:
+      - db
+    networks:
+      - default
+    volumes:
+      - pleasanter_data:/app/App_Data
+      - pleasanter_logs:/app/Logs
+    ports:
+      - "8080:80"
+
+  Implem.CodeDefiner:
+    build:
+      context: .
+      dockerfile: ./Implem.CodeDefiner/Dockerfile
+    environment:
+        - Implem.Pleasanter_Rds_PostgreSQL_SaConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_SaConnectionString}
+        - Implem.Pleasanter_Rds_PostgreSQL_OwnerConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_OwnerConnectionString}
+        - Implem.Pleasanter_Rds_PostgreSQL_UserConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_UserConnectionString}
+        - ASPNETCORE_ENVIRONMENT=Development
+    image: implem.codedefiner:local
+    container_name: codedefiner-local
+    restart: unless-stopped
+    depends_on:
+      - db
+    networks:
+      - default
+    volumes:
+      - codedefiner_data:/app/App_Data
+    ports:
+      - "8081:80"
+
+  db:
+    container_name: postgresql-local
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+    restart: unless-stopped
+    networks:
+      - default
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:
+  pleasanter_data:
+  pleasanter_logs:
+  codedefiner_data: 
