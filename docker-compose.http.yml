@@ -1,0 +1,77 @@
+version: '3.5'
+
+services:
+  Implem.Pleasanter:
+    build:
+      context: .
+      dockerfile: ./Implem.Pleasanter/Dockerfile
+    environment:
+        - Implem.Pleasanter_Rds_PostgreSQL_SaConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_SaConnectionString}
+        - Implem.Pleasanter_Rds_PostgreSQL_OwnerConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_OwnerConnectionString}
+        - Implem.Pleasanter_Rds_PostgreSQL_UserConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_UserConnectionString}
+        - ASPNETCORE_ENVIRONMENT=Production
+        - ASPNETCORE_URLS=http://+:80
+    image: implem.pleasanter:ssl
+    container_name: pleasanter-ssl
+    restart: unless-stopped
+    depends_on:
+      - db
+    networks:
+      - default
+    volumes:
+      - pleasanter_data:/app/App_Data
+      - pleasanter_logs:/app/Logs
+
+  Implem.CodeDefiner:
+    build:
+      context: .
+      dockerfile: ./Implem.CodeDefiner/Dockerfile
+    environment:
+        - Implem.Pleasanter_Rds_PostgreSQL_SaConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_SaConnectionString}
+        - Implem.Pleasanter_Rds_PostgreSQL_OwnerConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_OwnerConnectionString}
+        - Implem.Pleasanter_Rds_PostgreSQL_UserConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_UserConnectionString}
+        - ASPNETCORE_ENVIRONMENT=Production
+    image: implem.codedefiner:ssl
+    container_name: codedefiner-ssl
+    restart: unless-stopped
+    depends_on:
+      - db
+    networks:
+      - default
+    volumes:
+      - codedefiner_data:/app/App_Data
+
+  db:
+    container_name: postgresql-ssl
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+    restart: unless-stopped
+    networks:
+      - default
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-http
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx-http.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - Implem.Pleasanter
+    networks:
+      - default
+
+volumes:
+  postgres_data:
+  pleasanter_data:
+  pleasanter_logs:
+  codedefiner_data: 
