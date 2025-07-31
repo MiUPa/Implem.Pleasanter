@@ -1,4 +1,4 @@
-﻿version: '3.5'
+version: '3.5'
 
 services:
   Implem.Pleasanter:
@@ -6,29 +6,39 @@ services:
       context: .
       dockerfile: ./Implem.Pleasanter/Dockerfile
     environment:
-        - Implem.Pleasanter_Rds_PostgreSQL_SaConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_SaConnectionString}
-        - Implem.Pleasanter_Rds_PostgreSQL_OwnerConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_OwnerConnectionString}
-        - Implem.Pleasanter_Rds_PostgreSQL_UserConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_UserConnectionString}
+      - Implem.Pleasanter_Rds_PostgreSQL_SaConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_SaConnectionString}
+      - Implem.Pleasanter_Rds_PostgreSQL_OwnerConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_OwnerConnectionString}
+      - Implem.Pleasanter_Rds_PostgreSQL_UserConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_UserConnectionString}
+      - TZ=${TIMEZONE:-Asia/Tokyo}
     image: implem.pleasanter
     container_name: pleasanter
+    ports:
+      - "${PLEASANTER_PORT:-8080}:8080"
     depends_on:
       - db
+    restart: always
     networks:
       - default
+    volumes:
+      - pleasanter_data:/app/App_Data
+
   Implem.CodeDefiner:
     build:
       context: .
       dockerfile: ./Implem.CodeDefiner/Dockerfile
     environment:
-        - Implem.Pleasanter_Rds_PostgreSQL_SaConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_SaConnectionString}
-        - Implem.Pleasanter_Rds_PostgreSQL_OwnerConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_OwnerConnectionString}
-        - Implem.Pleasanter_Rds_PostgreSQL_UserConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_UserConnectionString}
+      - Implem.Pleasanter_Rds_PostgreSQL_SaConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_SaConnectionString}
+      - Implem.Pleasanter_Rds_PostgreSQL_OwnerConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_OwnerConnectionString}
+      - Implem.Pleasanter_Rds_PostgreSQL_UserConnectionString=${Implem_Pleasanter_Rds_PostgreSQL_UserConnectionString}
+      - TZ=${TIMEZONE:-Asia/Tokyo}
     image: implem.codedefiner
     container_name: codedefiner
     depends_on:
       - db
+    restart: always
     networks:
       - default
+
   db:
     container_name: postgresql
     image: postgres:15
@@ -38,10 +48,22 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
       - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+      - TZ=${TIMEZONE:-Asia/Tokyo}
     ports:
       - "5432:5432"
+    restart: always
     networks:
       - default
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+
 networks:
   default:
     name: pleasanternetwork
+
+volumes:
+  postgres_data:
+    name: pleasanter_postgres_data
+  pleasanter_data:
+    name: pleasanter_app_data
