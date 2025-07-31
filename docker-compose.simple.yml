@@ -1,0 +1,48 @@
+version: '3.5'
+
+services:
+  Implem.Pleasanter:
+    build:
+      context: .
+      dockerfile: ./Implem.Pleasanter/Dockerfile
+    environment:
+        - Implem.Pleasanter_Rds_PostgreSQL_SaConnectionString=Host=db;Port=5432;Database=pleasanter;Username=pleasanter;Password=pleasanter
+        - Implem.Pleasanter_Rds_PostgreSQL_OwnerConnectionString=Host=db;Port=5432;Database=pleasanter;Username=pleasanter;Password=pleasanter
+        - Implem.Pleasanter_Rds_PostgreSQL_UserConnectionString=Host=db;Port=5432;Database=pleasanter;Username=pleasanter;Password=pleasanter
+        - ASPNETCORE_ENVIRONMENT=Production
+        - ASPNETCORE_URLS=http://+:80
+    image: implem.pleasanter:simple
+    container_name: pleasanter-simple
+    restart: unless-stopped
+    depends_on:
+      - db
+    networks:
+      - default
+    volumes:
+      - pleasanter_data:/app/App_Data
+      - pleasanter_logs:/app/Logs
+    ports:
+      - "8080:80"
+
+  db:
+    container_name: postgresql-simple
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=pleasanter
+      - POSTGRES_PASSWORD=pleasanter
+      - POSTGRES_DB=pleasanter
+      - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+    restart: unless-stopped
+    networks:
+      - default
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:
+  pleasanter_data:
+  pleasanter_logs: 
