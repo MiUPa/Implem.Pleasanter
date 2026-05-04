@@ -22,9 +22,18 @@ $p.paging = function (selector) {
     var buffer = 10;
     if ($control.length) {
         var $target = $observer.length ? $observer : $control;
+        // Published pages can hide footer commands or shift layout under zoom,
+        // leaving the observer below the actual scrollable document bottom.
+        var pageBottom = Math.floor(
+            Math.max(
+                document.documentElement.scrollHeight || 0,
+                document.body.scrollHeight || 0
+            )
+        );
+        var targetBottom = Math.floor($target.offset().top + $target.height());
         if (
             Math.floor($(window).scrollTop() + window.innerHeight + buffer) >=
-            Math.floor($target.offset().top + $target.height())
+            Math.min(targetBottom, pageBottom)
         ) {
             if ($offset.val() !== '-1') {
                 $p.setData($offset);
