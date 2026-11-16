@@ -97,7 +97,12 @@ namespace Implem.Pleasanter.Libraries.HtmlParts
                     step: 1,
                     value: period,
                     method: "post")
-                .Div(id: "GanttBody", action: () => hb
+                .Div(
+                    attributes: new HtmlAttributes()
+                        .Id("GanttBody")
+                        .DataAction("UpdateByGantt")
+                        .DataMethod("post"),
+                    action: () => hb
                     .GanttBody(
                         context: context,
                         ss: ss,
@@ -139,7 +144,35 @@ namespace Implem.Pleasanter.Libraries.HtmlParts
             EnumerableRowCollection<DataRow> dataRows,
             bool inRange)
         {
+            var startTimeColumn = ss.GetColumn(
+                context: context,
+                columnName: "StartTime");
+            var completionTimeColumn = ss.GetColumn(
+                context: context,
+                columnName: "CompletionTime");
             hb
+                .Hidden(
+                    controlId: "GanttReferenceType",
+                    value: ss.ReferenceType)
+                .Hidden(
+                    controlId: "GanttEditorFormat",
+                    value: ss.ColumnHash.ContainsKey("CompletionTime")
+                        ? ss.ColumnHash["CompletionTime"].EditorFormat
+                        : "")
+                .Hidden(
+                    controlId: "GanttCanUpdate",
+                    value: (startTimeColumn?.RecordedTime != true
+                        && startTimeColumn?.GetEditorReadOnly() != true
+                        && startTimeColumn?.CanUpdate(
+                            context: context,
+                            ss: ss,
+                            mine: null) == true
+                        && completionTimeColumn?.RecordedTime != true
+                        && completionTimeColumn?.GetEditorReadOnly() != true
+                        && completionTimeColumn?.CanUpdate(
+                            context: context,
+                            ss: ss,
+                            mine: null) == true).ToOneOrZeroString())
                 .Hidden(
                     controlId: "GanttMinDate",
                     value: startDate.ToLocal(context: context).ToString(

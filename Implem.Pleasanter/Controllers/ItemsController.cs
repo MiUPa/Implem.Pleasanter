@@ -1382,6 +1382,15 @@ namespace Implem.Pleasanter.Controllers
             return json;
         }
 
+        public string UpdateByGantt(long id)
+        {
+            var context = new Context();
+            var log = new SysLogModel(context: context);
+            var json = new ItemModel(context: context, referenceId: id).UpdateByGantt(context: context);
+            log.Finish(context: context, responseSize: json.Length);
+            return json;
+        }
+
         public string UpdateByKamban(long id)
         {
             var context = new Context();
