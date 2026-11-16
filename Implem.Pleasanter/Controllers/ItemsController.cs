@@ -902,6 +902,16 @@ namespace Implem.Pleasanter.Controllers
         }
 
         [HttpPost]
+        public string SetSiteMenuSort(long id)
+        {
+            var context = new Context();
+            var log = new SysLogModel(context: context);
+            var json = SiteUtilities.SetSiteMenuSort(context: context, siteId: id);
+            log.Finish(context: context, responseSize: json.Length);
+            return json;
+        }
+
+        [HttpPost]
         public string MoveTargetsSourceColumns(int id)
         {
             var context = new Context();
