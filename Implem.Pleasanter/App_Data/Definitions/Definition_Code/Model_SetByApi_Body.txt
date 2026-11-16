@@ -8,26 +8,76 @@
 
     if (data.Comments != null) Comments.ClearAndSplitPrependByApi(context: context, ss: ss, body: data.Comments, update: AccessStatus == Databases.AccessStatuses.Selected);
     if (data.VerUp != null) VerUp = data.VerUp.ToBool();
-    data.ClassHash?.ForEach(o => SetClass(
-        columnName: o.Key,
-        value: o.Value));
-    data.NumHash?.ForEach(o => SetNum(
-        columnName: o.Key,
-        value: new Num(
+    data.ClassHash?.ForEach(o =>
+    {
+        SetClass(
+            columnName: o.Key,
+            value: o.Value);
+        // 作成時、または保存済み値がnullの場合でも、APIで指定された空文字を保持する。
+        if (o.Value == string.Empty
+            && (AccessStatus == Databases.AccessStatuses.Initialized
+                || GetSavedClass(columnName: o.Key) == null))
+        {
+            SetSavedClass(
+                columnName: o.Key,
+                value: null);
+        }
+    });
+    data.NumHash?.ForEach(o =>
+    {
+        var column = ss.GetColumn(
             context: context,
-            column: ss.GetColumn(
+            columnName: o.Key);
+        SetNum(
+            columnName: o.Key,
+            value: new Num(
                 context: context,
-                columnName: o.Key),
-            value: o.Value.ToString())));
+                column: column,
+                value: o.Value.ToString()));
+        // 保存済み値がnullの場合でも、APIで指定された0を保持する。
+        if (column?.Nullable != true
+            && o.Value.HasValue
+            && o.Value.Value == 0
+            && GetSavedNum(columnName: o.Key) == null)
+        {
+            SetSavedNum(
+                columnName: o.Key,
+                value: decimal.MinValue);
+        }
+    });
     data.DateHash?.ForEach(o => SetDate(
         columnName: o.Key,
         value: o.Value.ToDateTime().ToUniversal(context: context)));
-    data.DescriptionHash?.ForEach(o => SetDescription(
-        columnName: o.Key,
-        value: o.Value));
-    data.CheckHash?.ForEach(o => SetCheck(
-        columnName: o.Key,
-        value: o.Value));
+    data.DescriptionHash?.ForEach(o =>
+    {
+        SetDescription(
+            columnName: o.Key,
+            value: o.Value);
+        // 作成時、または保存済み値がnullの場合でも、APIで指定された空文字を保持する。
+        if (o.Value == string.Empty
+            && (AccessStatus == Databases.AccessStatuses.Initialized
+                || GetSavedDescription(columnName: o.Key) == null))
+        {
+            SetSavedDescription(
+                columnName: o.Key,
+                value: null);
+        }
+    });
+    data.CheckHash?.ForEach(o =>
+    {
+        SetCheck(
+            columnName: o.Key,
+            value: o.Value);
+        // 作成時、または保存済み値がnullの場合でも、APIで指定されたfalseを保持する。
+        if (o.Value == false
+            && (AccessStatus == Databases.AccessStatuses.Initialized
+                || GetSavedCheckNullable(columnName: o.Key) == null))
+        {
+            SetSavedCheckNull(
+                columnName: o.Key,
+                isNull: true);
+        }
+    });
     data.AttachmentsHash?.ForEach(o =>
     {
         string columnName = o.Key;

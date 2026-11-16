@@ -2484,6 +2484,10 @@ namespace Implem.Pleasanter.Models
                     where: Rds.IssuesWhere()
                         .SiteId(ss.SiteId)
                         .IssueId(IssueId)));
+            LinkedRecordReferenceUtilities.CleanupDeletedReferences(
+                context: context,
+                ss: ss,
+                deletedRecordIds: IssueId.ToSingleList());
             var statements = new List<SqlStatement>();
             var where = Rds.IssuesWhere().SiteId(SiteId).IssueId(IssueId);
             statements.OnDeletingExtendedSqls(
@@ -3247,26 +3251,76 @@ namespace Implem.Pleasanter.Models
             if (data.Locked != null) Locked = data.Locked.ToBool().ToBool();
             if (data.Comments != null) Comments.ClearAndSplitPrependByApi(context: context, ss: ss, body: data.Comments, update: AccessStatus == Databases.AccessStatuses.Selected);
             if (data.VerUp != null) VerUp = data.VerUp.ToBool();
-            data.ClassHash?.ForEach(o => SetClass(
-                columnName: o.Key,
-                value: o.Value));
-            data.NumHash?.ForEach(o => SetNum(
-                columnName: o.Key,
-                value: new Num(
+            data.ClassHash?.ForEach(o =>
+            {
+                SetClass(
+                    columnName: o.Key,
+                    value: o.Value);
+                // 作成時、または保存済み値がnullの場合でも、APIで指定された空文字を保持する。
+                if (o.Value == string.Empty
+                    && (AccessStatus == Databases.AccessStatuses.Initialized
+                        || GetSavedClass(columnName: o.Key) == null))
+                {
+                    SetSavedClass(
+                        columnName: o.Key,
+                        value: null);
+                }
+            });
+            data.NumHash?.ForEach(o =>
+            {
+                var column = ss.GetColumn(
                     context: context,
-                    column: ss.GetColumn(
+                    columnName: o.Key);
+                SetNum(
+                    columnName: o.Key,
+                    value: new Num(
                         context: context,
-                        columnName: o.Key),
-                    value: o.Value.ToString())));
+                        column: column,
+                        value: o.Value.ToString()));
+                // 保存済み値がnullの場合でも、APIで指定された0を保持する。
+                if (column?.Nullable != true
+                    && o.Value.HasValue
+                    && o.Value.Value == 0
+                    && GetSavedNum(columnName: o.Key) == null)
+                {
+                    SetSavedNum(
+                        columnName: o.Key,
+                        value: decimal.MinValue);
+                }
+            });
             data.DateHash?.ForEach(o => SetDate(
                 columnName: o.Key,
                 value: o.Value.ToDateTime().ToUniversal(context: context)));
-            data.DescriptionHash?.ForEach(o => SetDescription(
-                columnName: o.Key,
-                value: o.Value));
-            data.CheckHash?.ForEach(o => SetCheck(
-                columnName: o.Key,
-                value: o.Value));
+            data.DescriptionHash?.ForEach(o =>
+            {
+                SetDescription(
+                    columnName: o.Key,
+                    value: o.Value);
+                // 作成時、または保存済み値がnullの場合でも、APIで指定された空文字を保持する。
+                if (o.Value == string.Empty
+                    && (AccessStatus == Databases.AccessStatuses.Initialized
+                        || GetSavedDescription(columnName: o.Key) == null))
+                {
+                    SetSavedDescription(
+                        columnName: o.Key,
+                        value: null);
+                }
+            });
+            data.CheckHash?.ForEach(o =>
+            {
+                SetCheck(
+                    columnName: o.Key,
+                    value: o.Value);
+                // 作成時、または保存済み値がnullの場合でも、APIで指定されたfalseを保持する。
+                if (o.Value == false
+                    && (AccessStatus == Databases.AccessStatuses.Initialized
+                        || GetSavedCheckNullable(columnName: o.Key) == null))
+                {
+                    SetSavedCheckNull(
+                        columnName: o.Key,
+                        isNull: true);
+                }
+            });
             data.AttachmentsHash?.ForEach(o =>
             {
                 string columnName = o.Key;
@@ -3684,26 +3738,20 @@ namespace Implem.Pleasanter.Models
         {
             ss.Summaries.ForEach(summary =>
             {
-                var id = SynchronizeSummaryDestinationId(linkColumn: summary.LinkColumn);
-                var savedId = SynchronizeSummaryDestinationId(
-                    linkColumn: summary.LinkColumn,
-                    saved: true);
-                if (id != 0)
-                {
+                var targetIds = SynchronizeSummaryDestinationIds(
+                        linkColumn: summary.LinkColumn)
+                    .Concat(SynchronizeSummaryDestinationIds(
+                        linkColumn: summary.LinkColumn,
+                        saved: true))
+                    .Where(id => id > 0)
+                    .Distinct()
+                    .ToList();
+                targetIds.ForEach(id =>
                     SynchronizeSummary(
                         context: context,
                         ss: ss,
                         summary: summary,
-                        id: id);
-                }
-                if (savedId != 0 && id != savedId)
-                {
-                    SynchronizeSummary(
-                        context: context,
-                        ss: ss,
-                        summary: summary,
-                        id: savedId);
-                }
+                        id: id));
             });
             SynchronizeSourceSummary(
                 context: context,
@@ -3760,11 +3808,21 @@ namespace Implem.Pleasanter.Models
                             id: IssueId)));
         }
 
-        private long SynchronizeSummaryDestinationId(string linkColumn, bool saved = false)
+        private IEnumerable<long> SynchronizeSummaryDestinationIds(
+            string linkColumn, bool saved = false)
         {
-            return saved
-                ? GetSavedClass(linkColumn).ToLong()
-                : GetClass(linkColumn).ToLong();
+            var value = saved
+                ? GetSavedClass(linkColumn)
+                : GetClass(linkColumn);
+            var ids = value.Deserialize<List<long>>();
+            if (ids?.Any() == true)
+            {
+                return ids.Where(id => id > 0).Distinct().ToList();
+            }
+            var id = value.ToLong();
+            return id > 0
+                ? id.ToSingleList()
+                : new List<long>();
         }
 
         public void UpdateFormulaColumns(
@@ -4790,12 +4848,15 @@ namespace Implem.Pleasanter.Models
                             switch (Def.ExtendedColumnTypes.Get(column?.Name ?? string.Empty))
                             {
                                 case "Class":
+                                    var classValue = dataRow[column.ColumnName] == DBNull.Value
+                                        ? null
+                                        : dataRow[column.ColumnName].ToString();
                                     SetClass(
                                         columnName: column.Name,
-                                        value: dataRow[column.ColumnName].ToString());
+                                        value: classValue);
                                     SetSavedClass(
                                         columnName: column.Name,
-                                        value: GetClass(columnName: column.Name));
+                                        value: classValue);
                                     break;
                                 case "Num":
                                     SetNum(
@@ -4816,20 +4877,29 @@ namespace Implem.Pleasanter.Models
                                         value: GetDate(columnName: column.Name));
                                     break;
                                 case "Description":
+                                    var descriptionValue = dataRow[column.ColumnName] == DBNull.Value
+                                        ? null
+                                        : dataRow[column.ColumnName].ToString();
                                     SetDescription(
                                         columnName: column.Name,
-                                        value: dataRow[column.ColumnName].ToString());
+                                        value: descriptionValue);
                                     SetSavedDescription(
                                         columnName: column.Name,
-                                        value: GetDescription(columnName: column.Name));
+                                        value: descriptionValue);
                                     break;
                                 case "Check":
+                                    var hasCheckValue = dataRow[column.ColumnName] != DBNull.Value;
                                     SetCheck(
                                         columnName: column.Name,
-                                        value: dataRow[column.ColumnName].ToBool());
+                                        value: hasCheckValue
+                                            ? dataRow[column.ColumnName].ToBool()
+                                            : false);
                                     SetSavedCheck(
                                         columnName: column.Name,
                                         value: GetCheck(columnName: column.Name));
+                                    SetSavedCheckNull(
+                                        columnName: column.Name,
+                                        isNull: !hasCheckValue);
                                     break;
                                 case "Attachments":
                                     SetAttachments(
