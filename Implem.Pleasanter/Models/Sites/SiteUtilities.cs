@@ -4890,7 +4890,7 @@ namespace Implem.Pleasanter.Models
                 .Get(context.TenantId)?
                 .SiteMenu
                 .SiteConditions(context: context, ss: ss);
-            var sortable = CanSortTable(context, 0);
+            var sortable = SiteMenuSortable(context: context, parentId: 0);
             return hb.Template(
                 context: context,
                 ss: ss,
@@ -4982,7 +4982,7 @@ namespace Implem.Pleasanter.Models
                 case Error.Types.None: break;
                 default: return HtmlTemplates.Error(context, invalid);
             }
-            var sortable = CanSortTable(context, siteModel.SiteId);
+            var sortable = SiteMenuSortable(context: context, parentId: siteModel.SiteId);
             var hb = new HtmlBuilder();
             var siteConditions = SiteInfo.TenantCaches
                 .Get(context.TenantId)?
@@ -5060,6 +5060,9 @@ namespace Implem.Pleasanter.Models
                     type: context.SiteTopPermission());
             }
             return hb.Div(id: "SiteMenu", action: () => hb
+                .SiteMenuSorters(
+                    context: context,
+                    parentId: siteModel?.SiteId ?? 0)
                 .Nav(css: "cf", _using: siteModel != null, action: () => hb
                     .Ul(css: "nav-sites", action: () => hb
                         .ToParent(context: context, siteModel: siteModel)))
@@ -5074,6 +5077,63 @@ namespace Implem.Pleasanter.Models
                                 referenceType: siteModelChild.ReferenceType,
                                 title: siteModelChild.Title.Value,
                                 siteConditions: siteConditions)))));
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private static HtmlBuilder SiteMenuSorters(
+            this HtmlBuilder hb, Context context, long parentId)
+        {
+            return hb.Div(css: "site-menu-sorters", action: () => hb
+                .SiteMenuSorter(
+                    context: context,
+                    parentId: parentId,
+                    columnName: "Title",
+                    label: Displays.Title(context: context))
+                .SiteMenuSorter(
+                    context: context,
+                    parentId: parentId,
+                    columnName: "UpdatedTime",
+                    label: Displays.UpdatedTime(context: context)));
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private static HtmlBuilder SiteMenuSorter(
+            this HtmlBuilder hb,
+            Context context,
+            long parentId,
+            string columnName,
+            string label)
+        {
+            var current = SiteMenuSortType(
+                context: context,
+                parentId: parentId,
+                columnName: columnName);
+            return hb.Span(
+                css: "site-menu-sorter",
+                attributes: new HtmlAttributes()
+                    .DataId("SiteMenuSorters__" + columnName)
+                    .Add("data-order-type", SiteMenuSortNextType(current)),
+                action: () => hb
+                    .Text(text: label)
+                    .SiteMenuSortIcon(orderType: current));
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private static HtmlBuilder SiteMenuSortIcon(
+            this HtmlBuilder hb, SqlOrderBy.Types orderType)
+        {
+            switch (orderType)
+            {
+                case SqlOrderBy.Types.asc: return hb.Icon(iconCss: "ui-icon-triangle-1-n");
+                case SqlOrderBy.Types.desc: return hb.Icon(iconCss: "ui-icon-triangle-1-s");
+                default: return hb;
+            }
         }
 
         /// <summary>
@@ -5470,7 +5530,8 @@ namespace Implem.Pleasanter.Models
                     .SiteId()
                     .Title()
                     .ReferenceType()
-                    .SiteSettings(),
+                    .SiteSettings()
+                    .UpdatedTime(),
                 where: Rds.SitesWhere()
                     .TenantId(context.TenantId)
                     .ParentId(ss.SiteId)
@@ -5487,11 +5548,139 @@ namespace Implem.Pleasanter.Models
                 var index = orderModel.Data.IndexOf(siteModel.SiteId);
                 siteModel.SiteMenu = (index != -1 ? index : int.MaxValue);
             });
-            return siteCollection
+            var sites = siteCollection
                 .Where(o => context.HasPrivilege
                     || !(context.PermissionHash.Get(o.SiteId) == Permissions.Types.Read
-                        && o.SiteSettings?.NoDisplayIfReadOnly == true))
-                .OrderBy(o => o.SiteMenu);
+                        && o.SiteSettings?.NoDisplayIfReadOnly == true));
+            switch (SiteMenuSortColumn(context: context, parentId: ss.SiteId))
+            {
+                case "Title":
+                    return SiteMenuSortType(
+                        context: context,
+                        parentId: ss.SiteId,
+                        columnName: "Title") == SqlOrderBy.Types.desc
+                            ? sites.OrderByDescending(o => o.Title.Value)
+                            : sites.OrderBy(o => o.Title.Value);
+                case "UpdatedTime":
+                    return SiteMenuSortType(
+                        context: context,
+                        parentId: ss.SiteId,
+                        columnName: "UpdatedTime") == SqlOrderBy.Types.desc
+                            ? sites.OrderByDescending(o => o.UpdatedTime.Value)
+                            : sites.OrderBy(o => o.UpdatedTime.Value);
+                default:
+                    return sites.OrderBy(o => o.SiteMenu);
+            }
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private static Dictionary<long, string> SiteMenuSortHash(Context context)
+        {
+            return context.SessionData
+                .Get("SiteMenuSort")?
+                .Deserialize<Dictionary<long, string>>() ?? new Dictionary<long, string>();
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private static string SiteMenuSortColumn(Context context, long parentId)
+        {
+            var data = SiteMenuSortHash(context: context).Get(parentId);
+            return data.IsNullOrEmpty()
+                ? null
+                : data.Split(',')[0];
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private static SqlOrderBy.Types SiteMenuSortType(
+            Context context, long parentId, string columnName)
+        {
+            var data = SiteMenuSortHash(context: context).Get(parentId);
+            if (data.IsNullOrEmpty())
+            {
+                return SqlOrderBy.Types.release;
+            }
+            var parts = data.Split(',');
+            return parts.Length == 2 && parts[0] == columnName && parts[1] == "desc"
+                ? SqlOrderBy.Types.desc
+                : parts.Length == 2 && parts[0] == columnName && parts[1] == "asc"
+                    ? SqlOrderBy.Types.asc
+                    : SqlOrderBy.Types.release;
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private static string SiteMenuSortNextType(SqlOrderBy.Types current)
+        {
+            switch (current)
+            {
+                case SqlOrderBy.Types.asc: return "desc";
+                case SqlOrderBy.Types.desc: return string.Empty;
+                default: return "asc";
+            }
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private static bool SiteMenuSortable(Context context, long parentId)
+        {
+            return CanSortTable(context: context, id: parentId)
+                && SiteMenuSortColumn(context: context, parentId: parentId) == null;
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        public static string SetSiteMenuSort(Context context, long siteId)
+        {
+            var siteModel = new SiteModel(context: context, siteId: siteId);
+            var prefix = "SiteMenuSorters__";
+            var sorter = context.Forms
+                .Where(o => o.Key.StartsWith(prefix))
+                .Select(o => new
+                {
+                    ColumnName = o.Key.Substring(prefix.Length),
+                    o.Value
+                })
+                .FirstOrDefault();
+            var data = SiteMenuSortHash(context: context);
+            var orderType = sorter?.Value == "desc"
+                ? "desc"
+                : sorter?.Value == "asc"
+                    ? "asc"
+                    : null;
+            if (orderType == null
+                || (sorter.ColumnName != "Title" && sorter.ColumnName != "UpdatedTime"))
+            {
+                data.Remove(siteId);
+            }
+            else
+            {
+                data[siteId] = sorter.ColumnName + "," + orderType;
+            }
+            SessionUtilities.Set(
+                context: context,
+                key: "SiteMenuSort",
+                value: data.ToJson());
+            var res = new ResponseCollection(context: context)
+                .ReplaceAll("#SiteMenu", new HtmlBuilder().SiteMenu(
+                    context: context,
+                    siteModel: siteId != 0 ? siteModel : null,
+                    siteConditions: SiteInfo.TenantCaches
+                        .Get(context.TenantId)?
+                        .SiteMenu
+                        .SiteConditions(context: context, ss: siteModel.SiteSettings)));
+            res = SetSiteMenuInvoke(
+                res: res,
+                sortable: SiteMenuSortable(context: context, parentId: siteId));
+            return res.ToJson();
         }
 
         /// <summary>
@@ -5507,7 +5696,11 @@ namespace Implem.Pleasanter.Models
                 .Hidden(attributes: new HtmlAttributes()
                     .Id("SortSiteMenu")
                     .DataAction("SortSiteMenu")
-                    .DataMethod("put"));
+                    .DataMethod("put"))
+                .Hidden(attributes: new HtmlAttributes()
+                    .Id("SetSiteMenuSort")
+                    .DataAction("SetSiteMenuSort")
+                    .DataMethod("post"));
         }
 
         /// <summary>

@@ -3718,6 +3718,19 @@ body:not(:has(#Editor)) {
             display: none;
         }
     }
+    .site-menu-sorters {
+        display: flex;
+        gap: 16px;
+        margin: 24px 16px 0;
+        .site-menu-sorter {
+            cursor: pointer;
+            user-select: none;
+            .ui-icon {
+                display: inline-block;
+                vertical-align: middle;
+            }
+        }
+    }
 }
 
 /* [TOP] > #TemplateTabsContainer */
