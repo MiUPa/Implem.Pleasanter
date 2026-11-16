@@ -9392,6 +9392,50 @@ namespace Implem.Pleasanter.Models
                     : null);
         }
 
+        public static string UpdateByGantt(Context context, SiteSettings ss)
+        {
+            var issueModel = new IssueModel(
+                context: context,
+                ss: ss,
+                issueId: context.Forms.Long("Id"),
+                formData: context.Forms);
+            var invalid = IssueValidators.OnUpdating(
+                context: context,
+                ss: ss,
+                issueModel: issueModel);
+            switch (invalid.Type)
+            {
+                case Error.Types.None: break;
+                default: return invalid.MessageJson(context: context);
+            }
+            if (issueModel.AccessStatus != Databases.AccessStatuses.Selected)
+            {
+                return Messages.ResponseDeleteConflicts(context: context).ToJson();
+            }
+            var updated = issueModel.Updated(context: context);
+            if (updated)
+            {
+                issueModel.VerUp = Versions.MustVerUp(
+                    context: context,
+                    ss: ss,
+                    baseModel: issueModel);
+                issueModel.Update(
+                    context: context,
+                    ss: ss,
+                    notice: true);
+            }
+            return GanttJson(
+                context: context,
+                ss: ss,
+                message: updated
+                    ? context.ErrorData.Type != Error.Types.None
+                        ? context.ErrorData.Message(context: context)
+                        : Messages.Updated(
+                            context: context,
+                            data: issueModel.Title.MessageDisplay(context: context))
+                    : null);
+        }
+
         public static string CalendarJson(
             Context context,
             SiteSettings ss,
@@ -10147,7 +10191,10 @@ namespace Implem.Pleasanter.Models
                         inRange: inRange));
         }
 
-        public static string GanttJson(Context context, SiteSettings ss)
+        public static string GanttJson(
+            Context context,
+            SiteSettings ss,
+            Message message = null)
         {
             if (!ss.EnableViewMode(context: context, name: "Gantt"))
             {
@@ -10193,6 +10240,7 @@ namespace Implem.Pleasanter.Models
                         ss: ss,
                         view: view,
                         invoke: "drawGantt",
+                        message: message,
                         bodyOnly: bodyOnly,
                         bodySelector: "#GanttBody",
                         body: body)

@@ -42,6 +42,14 @@
     }
 };
 
+$(document).on('click', '.site-menu-sorter', function (e) {
+    var $control = $(this);
+    var data = $p.getData($('.main-form'));
+    data[$control.attr('data-id')] = $control.attr('data-order-type') || '';
+    $p.send($('#SetSiteMenuSort'));
+    e.stopPropagation();
+});
+
 $p.openLinkDialog = function () {
     $('#LinkDialog').dialog({
         modal: true,
