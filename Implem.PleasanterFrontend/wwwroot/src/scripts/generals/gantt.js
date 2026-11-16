@@ -465,12 +465,15 @@ $p.setGanttDrag = function (svg, xScale, format, padding, minDate) {
             })
             .attr('x', xScale(start) < 0 ? padding + 5 : x + 5);
     };
+    // d3 v5 の流儀：ハンドラの引数はデータ（d）で、イベントは d3.event から取る。
     var drag = d3
         .drag()
-        .on('start', function (event, d) {
+        .on('start', function (d) {
+            var event = d3.event;
             state = { d: d, mode: dragMode(event, d), startX: event.x, days: 0 };
         })
-        .on('drag', function (event) {
+        .on('drag', function () {
+            var event = d3.event;
             if (!state) {
                 return;
             }
@@ -530,7 +533,8 @@ $p.setGanttDrag = function (svg, xScale, format, padding, minDate) {
         .filter(function (d) {
             return !d.GroupSummary;
         })
-        .on('mousemove', function (event, d) {
+        .on('mousemove', function (d) {
+            var event = { x: d3.mouse(this)[0] };
             d3.select(this).style('cursor', dragMode(event, d) === 'move' ? 'move' : 'ew-resize');
         });
 };
