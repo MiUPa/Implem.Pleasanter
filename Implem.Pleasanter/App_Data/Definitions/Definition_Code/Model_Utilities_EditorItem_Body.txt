@@ -253,6 +253,13 @@ private static HtmlBuilder Editor(
                                 .DataMethod("post"),
                             _using: #modelName#Model.MethodType != BaseModel.MethodTypes.New
                                 && !context.Publish)
+                        .FieldSet(
+                            attributes: new HtmlAttributes()
+                                .Id("FieldSetHistoryDiff")
+                                .DataAction("HistoryDiff")
+                                .DataMethod("post"),
+                            _using: #modelName#Model.MethodType != BaseModel.MethodTypes.New
+                                && !context.Publish)
                         .TabsPanelField(
                             attributes: new HtmlAttributes()
                                 .Id("FieldSetRecordAccessControl")
@@ -267,6 +274,10 @@ private static HtmlBuilder Editor(
                     value: Locations.BaseUrl(context: context))
                 .Hidden(
                     controlId: "Ver",
+                    value: #modelName#Model.Ver.ToString())
+                .Hidden(
+                    controlId: "HistoryDiffBaseVer",
+                    css: "control-hidden always-send",
                     value: #modelName#Model.Ver.ToString())
                 .Hidden(
                     controlId: "LockedTable",
@@ -390,6 +401,14 @@ private static HtmlBuilder EditorTabs(
                         href: "#FieldSetHistories",
                         text: Displays.ChangeHistoryList(context: context)))
             .Li(
+                _using: #modelName#Model.MethodType != BaseModel.MethodTypes.New
+                    && !context.Publish
+                    && !editInDialog,
+                action: () => hb
+                    .A(
+                        href: "#FieldSetHistoryDiff",
+                        text: Displays.HistoryDiff(context: context)))
+            .Li(
                 _using: context.CanManagePermission(ss: ss)
                     && !ss.Locked()
                     && #modelName#Model.MethodType != BaseModel.MethodTypes.New
@@ -469,7 +488,8 @@ public static HtmlBuilder Field(
     string idSuffix = null,
     bool isResponse = false,
     bool preview = false,
-    bool disableSection = false)
+    bool disableSection = false,
+    bool bulkUpdate = false)
 {
     var value = #modelName#Model.ControlValue(
         context: context,
@@ -481,6 +501,10 @@ public static HtmlBuilder Field(
         column: column);
     if (value != null)
     {
+        if (bulkUpdate)
+        {
+            column.StatusReadOnly = false;
+        }
         value += #modelName#Model.NumUnit(
             context: context,
             ss: ss,
@@ -514,7 +538,9 @@ public static HtmlBuilder Field(
             idSuffix: idSuffix,
             isResponse: isResponse,
             preview: preview,
-            disableSection: disableSection);
+            disableSection: disableSection,
+            ignoreHide: bulkUpdate,
+            savedRecord: #modelName#Model.#ModelName#Id > 0);
     }
     return hb;
 }

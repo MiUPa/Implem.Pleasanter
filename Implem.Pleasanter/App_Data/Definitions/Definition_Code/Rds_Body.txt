@@ -412,6 +412,7 @@ namespace Implem.Pleasanter.Libraries.DataSources
             {
 
 <!--Rds_IdColumnCases-->
+                case "BackgroundJobs": return "BackgroundJobId";
                 case "Extensions": return "ExtensionId";
                 default: return null;
             }
@@ -531,14 +532,15 @@ namespace Implem.Pleasanter.Libraries.DataSources
                     .FirstOrDefault(o => o.ColumnName == column.Name);
                 if (link != null)
                 {
-                    var linkedTableName = (!column.TableAlias.IsNullOrEmpty()
-                        ? column.TableAlias + "-"
-                        : string.Empty)
-                            + link.LinkedTableName();
+                    var linkedTableName = ColumnUtilities.LinkedTableAlias(
+                        tableAlias: column.TableAlias,
+                        link: link);
                     sqlColumn.Add(
                         columnBracket: "\"Title\"",
                         tableName: linkedTableName + "_Items",
-                        _as: linkedTableName + ",ItemTitle");
+                        _as: ColumnUtilities.ColumnName(
+                            tableAlias: linkedTableName,
+                            columnName: "ItemTitle"));
                 }
             }
             return sqlColumn;
@@ -559,10 +561,9 @@ namespace Implem.Pleasanter.Libraries.DataSources
                     .FirstOrDefault(o => o.ColumnName == column.Name);
                 if (link != null)
                 {
-                    var linkedTableName = (!column.TableAlias.IsNullOrEmpty()
-                        ? column.TableAlias + "-"
-                        : string.Empty)
-                            + link.LinkedTableName();
+                    var linkedTableName = ColumnUtilities.LinkedTableAlias(
+                        tableAlias: column.TableAlias,
+                        link: link);
                     groupBy.Add(
                         columnBracket: "\"Title\"",
                         tableName: linkedTableName + "_Items");
@@ -620,10 +621,10 @@ namespace Implem.Pleasanter.Libraries.DataSources
             }
         }
 
-        private static string CoalesceColumnBracket(
-            Context context, Column column, string defaultValue)
+        private static string CoalesceColumnBracket(Context context, Column column, string defaultValue)
         {
-            return $"({context.Sqls.IsNull}(#TableBracket#.\"{column.ColumnName}\",{defaultValue}))";
+            var colName = new ColumnNameInfo(column.ColumnName ?? column.Name).Name;
+            return $"({context.Sqls.IsNull}(#TableBracket#.\"{colName}\",{defaultValue}))";
         }
 
         public static SqlColumnCollection WithItemTitleCoalesced(
@@ -653,14 +654,15 @@ namespace Implem.Pleasanter.Libraries.DataSources
                 .FirstOrDefault(o => o.ColumnName == column.Name);
             if (link != null)
             {
-                var linkedTableName = (!column.TableAlias.IsNullOrEmpty()
-                    ? column.TableAlias + "-"
-                    : string.Empty)
-                        + link.LinkedTableName();
+                var linkedTableName = ColumnUtilities.LinkedTableAlias(
+                    tableAlias: column.TableAlias,
+                    link: link);
                 sqlColumn.Add(
                     columnBracket: "\"Title\"",
                     tableName: linkedTableName + "_Items",
-                    _as: linkedTableName + ",ItemTitle");
+                    _as: ColumnUtilities.ColumnName(
+                        tableAlias: linkedTableName,
+                        columnName: "ItemTitle"));
             }
             return sqlColumn;
         }
@@ -689,10 +691,9 @@ namespace Implem.Pleasanter.Libraries.DataSources
                 .FirstOrDefault(o => o.ColumnName == column.Name);
             if (link != null)
             {
-                var linkedTableName = (!column.TableAlias.IsNullOrEmpty()
-                    ? column.TableAlias + "-"
-                    : string.Empty)
-                        + link.LinkedTableName();
+                var linkedTableName = ColumnUtilities.LinkedTableAlias(
+                    tableAlias: column.TableAlias,
+                    link: link);
                 groupBy.Add(
                     columnBracket: "\"Title\"",
                     tableName: linkedTableName + "_Items");

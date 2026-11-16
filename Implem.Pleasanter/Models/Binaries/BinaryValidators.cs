@@ -117,15 +117,62 @@ namespace Implem.Pleasanter.Models
             Context context,
             SiteSettings ss = null,
             string columnName = null,
-            PostedFile file = null)
+            byte[] bin = null,
+            string contentType = null)
         {
             if (!context.ContractSettings.Attachments())
             {
                 return Error.Types.BadRequest;
             }
-            if (!file.ContentType.StartsWith("image/"))
+            if (bin == null || bin.Length == 0)
             {
                 return Error.Types.InvalidRequest;
+            }
+            var uploadSizeLimit = Parameters.BinaryStorage.ImageUploadFileSizeLimit;
+            if (uploadSizeLimit > 0
+                && (long)bin.Length > (long)(uploadSizeLimit.Value * 1024M * 1024M))
+            {
+                return Error.Types.TooLargeFile;
+            }
+            if (contentType?.StartsWith("image/") != true)
+            {
+                return Error.Types.InvalidRequest;
+            }
+            try
+            {
+                using var ms = new System.IO.MemoryStream(bin);
+                var imageInfo = SixLabors.ImageSharp.Image.Identify(ms);
+                if (imageInfo == null)
+                {
+                    return Error.Types.IncorrectFileFormat;
+                }
+                var decodedSizeLimit = Parameters.BinaryStorage.ImageDecodedSizeLimit;
+                if (decodedSizeLimit > 0)
+                {
+                    var frameCount = imageInfo.FrameMetadataCollection?.Count ?? 1;
+                    var limitBytes = (long)decodedSizeLimit.Value * 1024 * 1024;
+                    long estimatedBytes;
+                    try
+                    {
+                        estimatedBytes = checked((long)imageInfo.Width * imageInfo.Height * frameCount * 4);
+                    }
+                    catch (System.OverflowException)
+                    {
+                        return Error.Types.IncorrectFileFormat;
+                    }
+                    if (estimatedBytes > limitBytes)
+                    {
+                        return Error.Types.TooLargeFile;
+                    }
+                }
+            }
+            catch (SixLabors.ImageSharp.UnknownImageFormatException)
+            {
+                return Error.Types.IncorrectFileFormat;
+            }
+            catch (SixLabors.ImageSharp.InvalidImageContentException)
+            {
+                return Error.Types.IncorrectFileFormat;
             }
             var newTotalFileSize = context.PostedFiles.Sum(x => x.Size);
             if (OverTenantStorageSize(
@@ -186,32 +233,15 @@ namespace Implem.Pleasanter.Models
             {
                 return errorType;
             }
-            switch (BinaryUtilities.BinaryStorageProvider(column))
+            var providerName = BinaryUtilities.BinaryStorageProvider(column);
+            var totalLimitErrorType = CheckTotalLimitSize(
+                    attachments: attachments,
+                    providerName: providerName,
+                    externalTotalLimitSize: column.LocalFolderTotalLimitSize,
+                    dbTotalLimitSize: column.TotalLimitSize); 
+            if (totalLimitErrorType != Error.Types.None)
             {
-                case "LocalFolder":
-                    if (OverTotalLimitSize(
-                        attachments: attachments,
-                        totalLimitSize: column.LocalFolderTotalLimitSize))
-                    {
-                        return Error.Types.OverLocalFolderTotalLimitSize;
-                    }
-                    break;
-                case "AutoDataBaseOrLocalFolder":
-                    if (OverTotalLimitSize(
-                        attachments: attachments,
-                        totalLimitSize: column.TotalLimitSize))
-                    {
-                        return Error.Types.OverTotalLimitSize;
-                    }
-                    break;
-                default:
-                    if (OverTotalLimitSize(
-                        attachments: attachments,
-                        totalLimitSize: column.TotalLimitSize))
-                    {
-                        return Error.Types.OverTotalLimitSize;
-                    }
-                    break;
+                return totalLimitErrorType;
             }
             if (OverTenantStorageSize(
                 totalFileSize: BinaryUtilities.UsedTenantStorageSize(context: context),
@@ -261,32 +291,15 @@ namespace Implem.Pleasanter.Models
                 {
                     return errorType;
                 }
-                switch (BinaryUtilities.BinaryStorageProvider(column))
+                var providerName = BinaryUtilities.BinaryStorageProvider(column);
+                var totalLimitErrorType = CheckTotalLimitSize(
+                        attachments: attachments,
+                        providerName: providerName,
+                        externalTotalLimitSize: column.LocalFolderTotalLimitSize,
+                        dbTotalLimitSize: column.TotalLimitSize);
+                if (totalLimitErrorType != Error.Types.None)
                 {
-                    case "LocalFolder":
-                        if (OverTotalLimitSize(
-                            attachments: attachments,
-                            totalLimitSize: column.LocalFolderTotalLimitSize))
-                        {
-                            return Error.Types.OverLocalFolderTotalLimitSize;
-                        }
-                        break;
-                    case "AutoDataBaseOrLocalFolder":
-                        if(OverTotalLimitSize(
-                            attachments: attachments,
-                            totalLimitSize: column.TotalLimitSize))
-                        {
-                            return Error.Types.OverTotalLimitSize;
-                        }
-                        break;
-                    default:
-                        if (OverTotalLimitSize(
-                            attachments: attachments,
-                            totalLimitSize: column.TotalLimitSize))
-                        {
-                            return Error.Types.OverTotalLimitSize;
-                        }
-                        break;
+                    return totalLimitErrorType;
                 }
                 if (OverTenantStorageSize(
                     totalFileSize: BinaryUtilities.UsedTenantStorageSize(context: context),
@@ -321,32 +334,15 @@ namespace Implem.Pleasanter.Models
             {
                 return Error.Types.OverLimitQuantity;
             }
-            switch (BinaryUtilities.BinaryStorageProvider())
+            var providerName = BinaryUtilities.BinaryStorageProvider();
+            var totalLimitErrorType = CheckTotalLimitSize(
+                    attachments: attachments,
+                    providerName: providerName,
+                    externalTotalLimitSize: Parameters.BinaryStorage.MaxSize,
+                    dbTotalLimitSize: Parameters.BinaryStorage.MaxSize);
+            if (totalLimitErrorType != Error.Types.None)
             {
-                case "LocalFolder":
-                    if (OverTotalLimitSize(
-                        attachments: attachments,
-                        totalLimitSize: Parameters.BinaryStorage.MaxSize))
-                    {
-                        return Error.Types.OverLocalFolderTotalLimitSize;
-                    }
-                    break;
-                case "AutoDataBaseOrLocalFolder":
-                    if (OverTotalLimitSize(
-                        attachments: attachments,
-                        totalLimitSize: Parameters.BinaryStorage.MaxSize))
-                    {
-                        return Error.Types.OverTotalLimitSize;
-                    }
-                    break;
-                default:
-                    if (OverTotalLimitSize(
-                        attachments: attachments,
-                        totalLimitSize: Parameters.BinaryStorage.MaxSize))
-                    {
-                        return Error.Types.OverTotalLimitSize;
-                    }
-                    break;
+                return totalLimitErrorType;
             }
             if (OverTenantStorageSize(
                 totalFileSize: BinaryUtilities.UsedTenantStorageSize(context: context),
@@ -393,7 +389,8 @@ namespace Implem.Pleasanter.Models
             var totalLength = default(long);
             foreach (var length in contentRanges.Select(r => r.Length ?? default(long)))
             {
-                if (BinaryUtilities.BinaryStorageProvider(column, length) == "LocalFolder")
+                if (Parameters.BinaryStorage.IsStoreExternal(
+                    BinaryUtilities.BinaryStorageProvider(column, length)))
                 {
                     if (OverLimitSize(
                         length: length,
@@ -413,35 +410,16 @@ namespace Implem.Pleasanter.Models
                 }
                 totalLength += length;
             }
-            switch (BinaryUtilities.BinaryStorageProvider(column))
+            var providerName = BinaryUtilities.BinaryStorageProvider(column);
+            var totalLimitErrorType = CheckTotalLimitSize(
+                    attachments: attachments,
+                    providerName: providerName,
+                    externalTotalLimitSize: column.LocalFolderTotalLimitSize,
+                    dbTotalLimitSize: column.TotalLimitSize,
+                    newFileTotalSize: totalLength); 
+            if (totalLimitErrorType != Error.Types.None)
             {
-                case "LocalFolder":
-                    if (OverTotalLimitSize(
-                        attachments: attachments,
-                        totalLimitSize: column.LocalFolderTotalLimitSize,
-                        newFileTotalSize: totalLength))
-                    {
-                        return Error.Types.OverLocalFolderTotalLimitSize;
-                    }
-                    break;
-                case "AutoDataBaseOrLocalFolder":
-                    if (OverTotalLimitSize(
-                        attachments: attachments,
-                        totalLimitSize: column.TotalLimitSize,
-                        newFileTotalSize: totalLength))
-                    {
-                        return Error.Types.OverTotalLimitSize;
-                    }
-                    break;
-                default:
-                    if (OverTotalLimitSize(
-                        attachments: attachments,
-                        totalLimitSize: column.TotalLimitSize,
-                        newFileTotalSize: totalLength))
-                    {
-                        return Error.Types.OverTotalLimitSize;
-                    }
-                    break;
+                return totalLimitErrorType;
             }
             if (OverTenantStorageSize(
                 BinaryUtilities.UsedTenantStorageSize(context),
@@ -486,7 +464,8 @@ namespace Implem.Pleasanter.Models
             foreach (var attachment in attachments
                 .Where(o => o.Added == true && o.Deleted != true))
             {
-                if (attachment.IsStoreLocalFolder(column))
+                if (Parameters.BinaryStorage.IsStoreExternal(
+                    BinaryUtilities.BinaryStorageProvider(column, attachment.Size.GetValueOrDefault())))
                 {
                     if (attachment.Size > column.LocalFolderLimitSize * 1024 * 1024)
                     {
@@ -702,6 +681,49 @@ namespace Implem.Pleasanter.Models
                     {
                         return Error.Types.InvalidRequest;
                     }
+                }
+            }
+            return Error.Types.None;
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private static Error.Types CheckTotalLimitSize(
+            Attachments attachments,
+            string providerName,
+            decimal? externalTotalLimitSize,
+            decimal? dbTotalLimitSize,
+            decimal newFileTotalSize = 0)
+        {
+            if (providerName == ParameterAccessor.Parts.BinaryStorageProviderNames.AutoDataBaseOrLocalFolder)
+            {
+                if (OverTotalLimitSize(
+                    attachments: attachments,
+                    totalLimitSize: dbTotalLimitSize,
+                    newFileTotalSize: newFileTotalSize))
+                {
+                    return Error.Types.OverTotalLimitSize;
+                }
+            }
+            else if (Parameters.BinaryStorage.IsStoreExternal(providerName))
+            {
+                if (OverTotalLimitSize(
+                    attachments: attachments,
+                    totalLimitSize: externalTotalLimitSize,
+                    newFileTotalSize: newFileTotalSize))
+                {
+                    return Error.Types.OverLocalFolderTotalLimitSize;
+                }
+            }
+            else
+            {
+                if (OverTotalLimitSize(
+                    attachments: attachments,
+                    totalLimitSize: dbTotalLimitSize,
+                    newFileTotalSize: newFileTotalSize))
+                {
+                    return Error.Types.OverTotalLimitSize;
                 }
             }
             return Error.Types.None;

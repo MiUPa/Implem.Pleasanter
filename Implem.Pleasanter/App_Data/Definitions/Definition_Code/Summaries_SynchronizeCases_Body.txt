@@ -13,5 +13,7 @@
         type: type,
         sourceColumn: sourceColumn,
         sourceCondition: sourceCondition,
-        #modelName#Id: id);
+        #modelName#Id: id,
+        destinationIds: destinationIds,
+        watchdog: watchdog);
     break;

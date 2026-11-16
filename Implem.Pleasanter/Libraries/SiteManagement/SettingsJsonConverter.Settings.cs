@@ -95,9 +95,9 @@ namespace Implem.Pleasanter.Libraries.SiteManagement
                     param.Logs.Add(new Log(Log.LogLevel.Error, "ConvertSite", $"SiteId {siteId} not found."));
                     return null;
                 }
-                if (context.CanManageSite(ss: ss) == false)
+                if (context.CanManageSite(ss: ss, site: true) == false)
                 {
-                    param.Logs.Add(new Log(Log.LogLevel.Error, "ConvertSite", $"SiteId {siteId} access denied."));
+                    param.Logs.Add(new Log(Log.LogLevel.Error, "ConvertSite", $"SiteId {siteId} not found."));
                     return null;
                 }
                 ss.Update_ColumnAccessControls();
@@ -130,6 +130,10 @@ namespace Implem.Pleasanter.Libraries.SiteManagement
                             Move = MoveSettingsModel.Create(context: context, param: param, siteModel: siteModel),
                             Summaries = SummariesSettingsModel.Create(context: context, param: param, siteModel: siteModel),
                             Formulas = FormulasSettingsModel.Create(context: context, param: param, siteModel: siteModel),
+                            AiProviders = AiProvidersSettingsModel.Create(
+                                context: context,
+                                param: param,
+                                siteModel: siteModel),
                             Processes = ProcessesSettingsModel.Create(context: context, param: param, siteModel: siteModel),
                             StatusControls = StatusControlsSettingsModel.Create(context: context, param: param, siteModel: siteModel),
                             Views = ViewsSettingsModel.Create(context: context, param: param, siteModel: siteModel),
@@ -560,6 +564,7 @@ namespace Implem.Pleasanter.Libraries.SiteManagement
                     public MoveSettingsModel Move;
                     public SummariesSettingsModel Summaries;
                     public FormulasSettingsModel Formulas;
+                    public AiProvidersSettingsModel AiProviders;
                     public ProcessesSettingsModel Processes;
                     public StatusControlsSettingsModel StatusControls;
                     public ViewsSettingsModel Views;
@@ -685,7 +690,22 @@ namespace Implem.Pleasanter.Libraries.SiteManagement
                             Type = "bool",
                             Value = (Parameters.Site.DisableSiteConditions == true || ss.DisableSiteConditions == true).ToString().ToLower(),
                             Changed = ss.DisableSiteConditions != ssNew.DisableSiteConditions
-                        }
+                        },
+                        (siteModel.ReferenceType != "Sites"
+                            && siteModel.ReferenceType != "Wikis"
+                            && siteModel.ReferenceType != "Dashboards")
+                                ? new ()
+                                {
+                                    Label = Displays.FirstDayOfWeek(context: context),
+                                    Name = "FirstDayOfWeek",
+                                    Type = "string",
+                                    Value = FirstDayOfWeeks.OptionCollection(
+                                        context: context,
+                                        inherit: true)
+                                            .Get((ss.FirstDayOfWeek ?? FirstDayOfWeeks.Inherit).ToString()),
+                                    Changed = ss.FirstDayOfWeek != ssNew.FirstDayOfWeek
+                                }
+                                : null
                     };
                     table.Columns.AddRange(columns.Where(v => v != null));
                     return obj;
@@ -5304,6 +5324,187 @@ namespace Implem.Pleasanter.Libraries.SiteManagement
                 }
             }
 
+            public class AiProvidersSettingsModel : SettingsModelBase
+            {
+                internal static AiProvidersSettingsModel Create(
+                    Context context,
+                    Param param,
+                    SiteModel siteModel)
+                {
+                    var referenceList = "Results/Issues";
+                    if (referenceList.IndexOf(siteModel.ReferenceType) < 0) return null;
+                    if (Parameters.AiConnect?.Rag.Enabled != true) return null;
+                    var obj = new AiProvidersSettingsModel();
+                    obj.ButtonLabel = Displays.AiProviders(context: context);
+                    obj.Tables = new ITableModel[]
+                    {
+                        ListTable.CreateTable(
+                            context: context,
+                            param: param,
+                            siteModel: siteModel),
+                        CreateAiProviderBase(context: context, param: param, siteModel: siteModel)
+                    }
+                        .Where(v => v != null)
+                        .ToList();
+                    return obj;
+                }
+
+                public class ListTable : List2TableBase<ListColumn>
+                {
+                    internal static ListTable CreateTable(
+                        Context context,
+                        Param param,
+                        SiteModel siteModel)
+                    {
+                        var table = new ListTable();
+                        table.Header = ListColumn.CreateHeaderModel(context: context);
+                        var ss = siteModel.SiteSettings;
+                        foreach (var aiProvider in ss.AiProviders ?? new SettingList<AiProvider>())
+                        {
+                            var dst = new ListColumn();
+                            ListColumn.SetData(
+                                dst: dst,
+                                context: context,
+                                aiProvider: aiProvider,
+                                ss: ss);
+                            ListColumn.SetChangeColumnName(
+                                dst: dst,
+                                context: context,
+                                aiProvider: aiProvider,
+                                ss: ss);
+                            (table.Columns ??= new()).Add(dst);
+                        }
+                        return table;
+                    }
+                }
+
+                public class ListColumn
+                {
+                    public int Id;
+                    public string Title;
+                    public string Format;
+                    public string ProviderType;
+                    public string ConnectionSetting;
+                    public bool? Disabled;
+                    public List<string> ChangedColumns = new();
+
+                    internal static void SetData(
+                        ListColumn dst,
+                        Context context,
+                        AiProvider aiProvider,
+                        SiteSettings ss)
+                    {
+                        dst.Id = aiProvider.Id;
+                        dst.Title = aiProvider.Title;
+                        dst.Format = aiProvider.Format;
+                        dst.ProviderType = AiProviderUtilities
+                            .ProviderTypes(context: context)
+                            .TryGetValue(
+                                aiProvider.ProviderType ?? string.Empty,
+                                out var providerType)
+                                ? providerType
+                                : aiProvider.ProviderType;
+                        dst.ConnectionSetting = AiProviderUtilities.ConnectionSettingText(
+                            aiProvider: aiProvider);
+                        dst.Disabled = aiProvider.Disabled == true;
+                    }
+
+                    internal static List2TableHeader CreateHeaderModel(Context context)
+                    {
+                        return new()
+                        {
+                            Labels = new()
+                            {
+                                new (){Key="Id",Text=Displays.Id(context:context),ReadOnly=true},
+                                new (){Key="Title",Text=Displays.Title(context:context)},
+                                new ()
+                                {
+                                    Key = "Format",
+                                    Text = Displays.AiProviderFormat(context: context)
+                                },
+                                new ()
+                                {
+                                    Key = "ProviderType",
+                                    Text = Displays.AiProviderProviderType(context: context)
+                                },
+                                new ()
+                                {
+                                    Key = "ConnectionSetting",
+                                    Text = Displays.AiProviderConnectionSetting(context: context)
+                                },
+                                new (){Key="Disabled",Text=Displays.Disabled(context:context)},
+                            }
+                        };
+                    }
+
+                    internal static void SetChangeColumnName(
+                        ListColumn dst,
+                        Context context,
+                        AiProvider aiProvider,
+                        SiteSettings ss)
+                    {
+                        var column = new AiProvider(context: context);
+                        var outColumnNew = new ListColumn();
+                        ListColumn.SetData(
+                            dst: outColumnNew,
+                            context: context,
+                            aiProvider: column,
+                            ss: ss);
+                        var t = typeof(ListColumn);
+                        foreach (var f in t.GetFields())
+                        {
+                            var n = f.Name;
+                            if (n == "ChangedColumns") continue;
+                            var v1 = f.GetValue(outColumnNew);
+                            var v2 = f.GetValue(dst);
+                            if (v1 != null || v2 != null)
+                            {
+                                var isChg = false;
+                                if ((v1 == null) != (v2 == null))
+                                {
+                                    isChg = true;
+                                }
+                                else if (v1.Equals(v2) == false)
+                                {
+                                    isChg = true;
+                                }
+                                if (isChg)
+                                {
+                                    dst.ChangedColumns.Add(n);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                private static ITableModel CreateAiProviderBase(
+                    Context context,
+                    Param param,
+                    SiteModel siteModel)
+                {
+                    var ss = siteModel.SiteSettings;
+                    var ssNew = new SiteSettings(context: context, referenceType: ss.ReferenceType);
+                    var columns = new List<KeyValueTableBase.ColumnModel>
+                    {
+                        new ()
+                        {
+                            Label = Displays.AllDisabled(context: context),
+                            Name = "AllDisabled",
+                            Type = "bool",
+                            Value = (ss.AiProvidersAllDisabled == true).ToString().ToLower(),
+                            Changed = ss.AiProvidersAllDisabled != ssNew.AiProvidersAllDisabled
+                        }
+                    }
+                        .Where(v => v != null)
+                        .ToList();
+                    return new KeyValueTableBase
+                    {
+                        Header = KeyValueHeader.CreateDefault(context: context),
+                        Columns = columns
+                    };
+                }
+            }
+
             public class RemindersSettingsModel : SettingsModelBase
             {
                 internal static RemindersSettingsModel Create(
@@ -6574,6 +6775,8 @@ namespace Implem.Pleasanter.Libraries.SiteManagement
                     public bool? Analy;
                     public bool? Kamban;
                     public bool? ImageLib;
+                    public int? DraftOutputMode;
+                    public string DraftKey;
                     public List<string> ChangedColumns = new();
                     public List<string> ReadOnlyColumns = new();
 
@@ -6605,6 +6808,8 @@ namespace Implem.Pleasanter.Libraries.SiteManagement
                                 ? new string[] { "New", "Edit", "Index", "Calendar", "Crosstab", "Gantt", "BurnDown", "TimeSeries", "Analy", "Kamban", "ImageLib" }
                                 : new string[] { "All" });
                         }
+                        dst.DraftOutputMode = style.DraftOutputMode ?? 0;
+                        dst.DraftKey = style.DraftKey;
                     }
 
                     internal static List2TableHeader CreateHeaderModel(Context context)
@@ -6629,6 +6834,8 @@ namespace Implem.Pleasanter.Libraries.SiteManagement
                                 new (){Key="Analy",Text=Displays.Analy(context:context)},
                                 new (){Key="Kamban",Text=Displays.Kamban(context:context)},
                                 new (){Key="ImageLib",Text=Displays.ImageLib(context:context)},
+                                new (){Key="DraftOutputMode",Text=Displays.DraftOutput(context:context)},
+                                new (){Key="DraftKey",Text=Displays.DraftKey(context:context)},
                             }
                         };
                     }
@@ -6785,6 +6992,8 @@ namespace Implem.Pleasanter.Libraries.SiteManagement
                     public bool? Analy;
                     public bool? Kamban;
                     public bool? ImageLib;
+                    public int? DraftOutputMode;
+                    public string DraftKey;
                     public List<string> ChangedColumns = new();
                     public List<string> ReadOnlyColumns = new();
 
@@ -6816,6 +7025,8 @@ namespace Implem.Pleasanter.Libraries.SiteManagement
                                 ? new string[] { "New", "Edit", "Index", "Calendar", "Crosstab", "Gantt", "BurnDown", "TimeSeries", "Analy", "Kamban", "ImageLib" }
                                 : new string[] { "All" });
                         }
+                        dst.DraftOutputMode = script.DraftOutputMode ?? 0;
+                        dst.DraftKey = script.DraftKey;
                     }
 
                     internal static List2TableHeader CreateHeaderModel(Context context)
@@ -6840,6 +7051,8 @@ namespace Implem.Pleasanter.Libraries.SiteManagement
                             new (){Key="Analy",Text=Displays.Analy(context:context)},
                             new (){Key="Kamban",Text=Displays.Kamban(context:context)},
                             new (){Key="ImageLib",Text=Displays.ImageLib(context:context)},
+                            new (){Key="DraftOutputMode",Text=Displays.DraftOutput(context:context)},
+                            new (){Key="DraftKey",Text=Displays.DraftKey(context:context)},
                         }
                         };
                     }
@@ -6994,6 +7207,8 @@ namespace Implem.Pleasanter.Libraries.SiteManagement
                     public bool? Analy;
                     public bool? Kamban;
                     public bool? ImageLib;
+                    public int? DraftOutputMode;
+                    public string DraftKey;
                     public List<string> ChangedColumns = new();
                     public List<string> ReadOnlyColumns = new();
 
@@ -7033,6 +7248,8 @@ namespace Implem.Pleasanter.Libraries.SiteManagement
                                 ? new string[] { "New", "Edit", "Index", "Calendar", "Crosstab", "Gantt", "BurnDown", "TimeSeries", "Analy", "Kamban", "ImageLib" }
                                 : new string[] { "All" });
                         }
+                        dst.DraftOutputMode = html.DraftOutputMode ?? 0;
+                        dst.DraftKey = html.DraftKey;
                     }
 
                     internal static List2TableHeader CreateHeaderModel(Context context)
@@ -7058,6 +7275,8 @@ namespace Implem.Pleasanter.Libraries.SiteManagement
                             new (){Key="Analy",Text=Displays.Analy(context:context)},
                             new (){Key="Kamban",Text=Displays.Kamban(context:context)},
                             new (){Key="ImageLib",Text=Displays.ImageLib(context:context)},
+                            new (){Key="DraftOutputMode",Text=Displays.DraftOutput(context:context)},
+                            new (){Key="DraftKey",Text=Displays.DraftKey(context:context)},
                         }
                         };
                     }

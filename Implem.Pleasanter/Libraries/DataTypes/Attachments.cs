@@ -1,4 +1,7 @@
-﻿using Implem.Libraries.DataSources.SqlServer;
+﻿using System.Collections.Generic;
+using System.Linq;
+using Implem.DefinitionAccessor;
+using Implem.Libraries.DataSources.SqlServer;
 using Implem.Libraries.Utilities;
 using Implem.Pleasanter.Interfaces;
 using Implem.Pleasanter.Libraries.Html;
@@ -6,8 +9,6 @@ using Implem.Pleasanter.Libraries.HtmlParts;
 using Implem.Pleasanter.Libraries.Requests;
 using Implem.Pleasanter.Libraries.Responses;
 using Implem.Pleasanter.Libraries.Settings;
-using System.Collections.Generic;
-using System.Linq;
 using static Implem.Pleasanter.Libraries.ServerScripts.ServerScriptModel;
 namespace Implem.Pleasanter.Libraries.DataTypes
 {
@@ -174,13 +175,15 @@ namespace Implem.Pleasanter.Libraries.DataTypes
                 {
                     if (attachment.Added == true)
                     {
-                        if (attachment.IsStoreLocalFolder(column))
+                        var usesLocalTemp = UsesLocalTemporaryStorage(api: context.Api);
+                        if (usesLocalTemp)
                         {
-                            attachment.WriteToLocal(context: context);
+                            attachment.WriteToLocal(context: context, column: column);
                         }
                         DataSources.File.DeleteTemp(
                             context: context,
-                            attachment.Guid);
+                            guid: attachment.Guid,
+                            deleteLocal: usesLocalTemp);
                     }
                     else if (attachment.Deleted == true && !attachment.Overwritten.HasValue)
                     {
@@ -202,11 +205,19 @@ namespace Implem.Pleasanter.Libraries.DataTypes
                 .Where(o => !o.Guid.IsNullOrEmpty())
                 .ForEach(attachment =>
                 {
-                    if (attachment.Added == true && attachment.IsStoreLocalFolder(column))
+                    if (attachment.Added == true
+                        && UsesLocalTemporaryStorage(api: context.Api))
                     {
-                        attachment.WriteToLocal(context: context);
+                        attachment.WriteToLocal(context: context, column: column);
                     }
                 });
+        }
+
+        internal static bool UsesLocalTemporaryStorage(bool api)
+        {
+            return api
+                || Parameters.BinaryStorage.TemporaryBinaryStorageProvider !=
+                    ParameterAccessor.Parts.BinaryStorageProviderNames.Rds;
         }
 
         public void DeleteTempOrLocalAttachment(
@@ -224,7 +235,8 @@ namespace Implem.Pleasanter.Libraries.DataTypes
                     {
                         DataSources.File.DeleteTemp(
                             context: context,
-                            attachment.Guid);
+                            guid: attachment.Guid,
+                            deleteLocal: UsesLocalTemporaryStorage(api: context.Api));
                     }
                     else if (attachment.Deleted == true && !attachment.Overwritten.HasValue)
                     {

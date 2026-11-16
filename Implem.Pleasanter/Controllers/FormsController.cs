@@ -14,6 +14,7 @@ using Implem.PleasanterFilters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -21,7 +22,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Antiforgery;
 using System.Web.Helpers;
 using System.Text.Json;
@@ -53,12 +53,22 @@ namespace Implem.Pleasanter.Controllers
             var id = context.Id; // context.IsFormの場合には new Context()中で SiteId を取得する
             var log = new SysLogModel(context: context);
             var model = new ItemModel(context: context, referenceId: id);
-            var ss = model.GetSite(context: context).SiteSettings;
-            if (!IsCurrentDateInPeriod(context, ss.FormStartDateTime?.ToLocal(context), ss.FormEndDateTime?.ToLocal(context)))
+            var siteModel = model.GetSite(context: context);
+            var ss = siteModel.SiteSettings;
+            if (!IsFormAvailable(context, ss))
             {
                 var htmlUnavailable = model.FormUnavailable(context: context);
                 ViewBag.HtmlBody = htmlUnavailable;
                 log.Finish(context: context, responseSize: htmlUnavailable.Length);
+                return context.RedirectData.Url.IsNullOrEmpty()
+                    ? View()
+                        : (ActionResult)Redirect(context.RedirectData.Url);
+            }
+            if (!siteModel.WithinFormLimits(context: context))
+            {
+                var htmlOverLimit = model.FormOverLimit(context: context);
+                ViewBag.HtmlBody = htmlOverLimit;
+                log.Finish(context: context, responseSize: htmlOverLimit.Length, message: "Form registration limit reached.");
                 return context.RedirectData.Url.IsNullOrEmpty()
                     ? View()
                         : (ActionResult)Redirect(context.RedirectData.Url);
@@ -74,8 +84,7 @@ namespace Implem.Pleasanter.Controllers
                     : (ActionResult)Redirect(context.RedirectData.Url);
         }
 
-
-        private bool IsCurrentDateInPeriod(Context context, DateTime? localStartDateTime, DateTime? localEndDateTime)
+        private static bool IsCurrentDateInPeriod(Context context, DateTime? localStartDateTime, DateTime? localEndDateTime)
         {
             var currentDateTime = DateTime.Now;
 
@@ -92,14 +101,54 @@ namespace Implem.Pleasanter.Controllers
             return true;
         }
 
+        [HttpPost]
+        public ActionResult SearchDropDown(string guid)
+        {
+            var context = new Context();
+            var id = context.Id; // context.IsFormの場合には new Context()中で SiteId を取得する
+            var model = new ItemModel(context: context, referenceId: id);
+            var ss = model.GetSite(context: context).SiteSettings;
+            var log = new SysLogModel(context: context);
+            if (!IsFormAvailable(context, ss))
+            {
+                return Content(InvalidRequestJson(context, log));
+            }
+            var json = model.SearchDropDown(context: context);
+            log.Finish(context: context, responseSize: json.Length);
+            return Content(json);
+        }
 
         [HttpPost]
+        public ActionResult SelectSearchDropDown(string guid)
+        {
+            var context = new Context();
+            var id = context.Id; // context.IsFormの場合には new Context()中で SiteId を取得する
+            var model = new ItemModel(context: context, referenceId: id);
+            var ss = model.GetSite(context: context).SiteSettings;
+            var log = new SysLogModel(context: context);
+            if (!IsFormAvailable(context, ss))
+            {
+                return Content(InvalidRequestJson(context, log));
+            }
+            var json = model.SelectSearchDropDown(context: context);
+            log.Finish(context: context, responseSize: json.Length);
+            return Content(json);
+        }
+
+        [HttpPost]
+        [EnableRateLimiting("PublicForm")]
         public async Task<string> Create(string guid)
         {
             var context = new Context();
             var id = context.Id; // context.IsFormの場合には new Context()中で SiteId を取得する
             var log = new SysLogModel(context: context);
-
+            var model = new ItemModel(context: context, referenceId: id);
+            var siteModel = model.GetSite(context: context);
+            var ss = siteModel.SiteSettings;
+            if (!IsFormAvailable(context, ss))
+            {
+                return InvalidRequestJson(context, log);
+            }
             var captchaResult = await _captchaVerificationService.VerifyAsync(context);
             if (!captchaResult.Success)
             {
@@ -108,13 +157,24 @@ namespace Implem.Pleasanter.Controllers
                 log.Finish(context: context, responseSize: errorJson.Length, message: $"CAPTCHA verification failed: {errorCodes}");
                 return errorJson;
             }
-
-            var model = new ItemModel(context: context, referenceId: id);
+            if (!siteModel.WithinFormLimits(context: context))
+            {
+                var overLimitJson = Error.Types.OverLimitForm.MessageJson(context: context);
+                log.Finish(context: context, responseSize: overLimitJson.Length, message: "Form registration limit reached.");
+                return overLimitJson;
+            }
             var json = model.Create(context: context);
-            bool isSuccess = Regex.IsMatch(json, @"""Method""\s*:\s*""Href""\s*,\s*""Value""\s*:\s*""/forms/[a-fA-F0-9]{32}/thanks""");
+            var urlOfThanks = Locations.FormThanks(
+                context: context,
+                controller: context.Controller,
+                guid: context.Guid);
+            var isSuccess = IsFormCreateSuccess(
+                json: json,
+                urlOfThanks: urlOfThanks);
             if (isSuccess)
             {
                 TempData[FormCreateSuccess] = true;
+                siteModel.AddFormCount(context: context);
             }
             log.Finish(context: context, responseSize: json.Length);
             return json;
@@ -137,6 +197,32 @@ namespace Implem.Pleasanter.Controllers
             return context.RedirectData.Url.IsNullOrEmpty()
                 ? View()
                     : (ActionResult)Redirect(context.RedirectData.Url);
+        }
+
+        [NonAction]
+        private static bool IsFormAvailable(Context context, SiteSettings ss)
+        {
+            return IsCurrentDateInPeriod(
+                context,
+                ss.FormStartDateTime?.ToLocal(context),
+                ss.FormEndDateTime?.ToLocal(context));
+        }
+
+        [NonAction]
+        private static string InvalidRequestJson(Context context, SysLogModel log)
+        {
+            var error = Error.Types.InvalidRequest.MessageJson(context: context);
+            log.Finish(context: context, responseSize: error.Length);
+            return error;
+        }
+
+        [NonAction]
+        internal static bool IsFormCreateSuccess(string json, string urlOfThanks)
+        {
+            return json
+                .Deserialize<List<Response>>()
+                ?.Any(response => response.Method == "Href"
+                    && response.Value?.ToString() == urlOfThanks) == true;
         }
 
     }

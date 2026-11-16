@@ -1,0 +1,12 @@
+﻿{
+    "BackgroundQueue": false,
+    "BackgroundJobDispatcherInterval": 60,
+    "BackgroundJobTimeout": 3600,
+    "BulkQueueThreshold": 0,
+    "FallbackLanguage": "ja",
+    "RecoverAction": "Failed",
+    "OutputFilePath": null,
+    "InputFilePath": null,
+    "WorkerCount": null,
+    "DisabledJobTypes": null
+}

@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Collections.Generic;
 using System.Linq;
 namespace Implem.Pleasanter.Controllers
@@ -44,6 +45,7 @@ namespace Implem.Pleasanter.Controllers
         }
 
         [HttpPost]
+        [EnableRateLimiting("PublicForm")]
         public string UploadImage(string reference, string guid, ICollection<IFormFile> file)
         {
             var context = new Context(files: file);
@@ -57,6 +59,7 @@ namespace Implem.Pleasanter.Controllers
         }
 
         [HttpDelete]
+        [EnableRateLimiting("PublicForm")]
         public string DeleteImage(string reference, string guid)
         {
             var context = new Context();
@@ -103,7 +106,8 @@ namespace Implem.Pleasanter.Controllers
             var log = new SysLogModel(context: context);
             var file = BinaryUtilities.Download(
                 context: context,
-                guid: guid)
+                guid: guid,
+                readMode: BinaryReadMode.Buffer)
                     ?.FileStream();
             log.Finish(context: context, responseSize: file?.FileContents?.Length ?? 0);
             var result = file != null
@@ -132,6 +136,7 @@ namespace Implem.Pleasanter.Controllers
         }
 
         [HttpPost]
+        [EnableRateLimiting("PublicForm")]
         public string DeleteTemp(string reference, string guidOfForm)
         {
             var context = new Context();
@@ -143,6 +148,7 @@ namespace Implem.Pleasanter.Controllers
 
         [HttpPost]
         [ResponseCache(Location = ResponseCacheLocation.None, NoStore = true)]
+        [EnableRateLimiting("PublicForm")]
         public ActionResult Upload(string guidOfForm)
         {
             var files = Request.Form.Files;

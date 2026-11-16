@@ -58,6 +58,7 @@ namespace Implem.Pleasanter.Models
         public DateTime ApiCountDate = 0.ToDateTime();
         public int ApiCount = 0;
         public bool DisableSiteCreatorPermission = false;
+        public bool EnableSsCache = false;
         public string Form = string.Empty;
 
         public TitleBody TitleBody
@@ -97,6 +98,7 @@ namespace Implem.Pleasanter.Models
         public DateTime SavedApiCountDate = 0.ToDateTime();
         public int SavedApiCount = 0;
         public bool SavedDisableSiteCreatorPermission = false;
+        public bool SavedEnableSsCache = false;
         public string SavedForm = string.Empty;
 
         public bool TenantId_Updated(Context context, bool copy = false, Column column = null)
@@ -351,6 +353,18 @@ namespace Implem.Pleasanter.Models
                     || column.GetDefaultInput(context: context).ToInt() != ApiCount);
         }
 
+        public bool EnableSsCache_Updated(Context context, bool copy = false, Column column = null)
+        {
+            if (copy && column?.CopyByDefault == true)
+            {
+                return column.GetDefaultInput(context: context).ToBool() != EnableSsCache;
+            }
+            return EnableSsCache != SavedEnableSsCache
+                &&  (column == null
+                    || column.DefaultInput.IsNullOrEmpty()
+                    || column.GetDefaultInput(context: context).ToBool() != EnableSsCache);
+        }
+
         public bool Form_Updated(Context context, bool copy = false, Column column = null)
         {
             if (copy && column?.CopyByDefault == true)
@@ -571,6 +585,7 @@ namespace Implem.Pleasanter.Models
                 case "ApiCountDate": return ApiCountDate.ToString();
                 case "ApiCount": return ApiCount.ToString();
                 case "DisableSiteCreatorPermission": return DisableSiteCreatorPermission.ToString();
+                case "EnableSsCache": return EnableSsCache.ToString();
                 case "Form": return Form;
                 case "Comments": return Comments.ToJson();
                 case "Creator": return Creator.Id.ToString();
@@ -616,6 +631,7 @@ namespace Implem.Pleasanter.Models
                 case "LockedUser": return SavedLockedUser.ToString();
                 case "ApiCountDate": return SavedApiCountDate.ToString();
                 case "ApiCount": return SavedApiCount.ToString();
+                case "EnableSsCache": return SavedEnableSsCache.ToString();
                 case "Form": return SavedForm;
                 case "Comments": return SavedComments;
                 case "Creator": return SavedCreator.ToString();
@@ -741,6 +757,9 @@ namespace Implem.Pleasanter.Models
                         case "DisableSiteCreatorPermission":
                             hash.Add("DisableSiteCreatorPermission", DisableSiteCreatorPermission.ToString());
                             break;
+                        case "EnableSsCache":
+                            hash.Add("EnableSsCache", EnableSsCache.ToString());
+                            break;
                         case "Form":
                             hash.Add("Form", Form);
                             break;
@@ -802,6 +821,7 @@ namespace Implem.Pleasanter.Models
                 case "LockedUser": return LockedUser_Updated(context: context);
                 case "ApiCountDate": return ApiCountDate_Updated(context: context);
                 case "ApiCount": return ApiCount_Updated(context: context);
+                case "EnableSsCache": return EnableSsCache_Updated(context: context);
                 case "Form": return Form_Updated(context: context);
                 case "Comments": return Comments_Updated(context: context);
                 case "Creator": return Creator_Updated(context: context);
@@ -1073,6 +1093,11 @@ namespace Implem.Pleasanter.Models
                         column: column);
                 case "DisableCrossSearch":
                     return DisableCrossSearch.ToDisplay(
+                        context: context,
+                        ss: ss,
+                        column: column);
+                case "EnableSsCache":
+                    return EnableSsCache.ToDisplay(
                         context: context,
                         ss: ss,
                         column: column);
@@ -1549,6 +1574,7 @@ namespace Implem.Pleasanter.Models
             SiteInfo.DeleteSiteCaches(
                 context: context,
                 siteIds: siteIds);
+            SiteInfo.ClearSsCache(context: context);
             return new ErrorData(type: Error.Types.None);
         }
 
@@ -1633,6 +1659,7 @@ namespace Implem.Pleasanter.Models
                     case "Sites_InheritPermission": InheritPermission = value.ToLong(); break;
                     case "Sites_Publish": Publish = value.ToBool(); break;
                     case "Sites_DisableCrossSearch": DisableCrossSearch = value.ToBool(); break;
+                    case "Sites_EnableSsCache": EnableSsCache = value.ToBool(); break;
                     case "Sites_Form": Form = value.ToString(); break;
                     case "Sites_Timestamp": Timestamp = value.ToString(); break;
                     case "Comments": Comments.Prepend(
@@ -1744,6 +1771,7 @@ namespace Implem.Pleasanter.Models
             ApiCountDate = siteModel.ApiCountDate;
             ApiCount = siteModel.ApiCount;
             DisableSiteCreatorPermission = siteModel.DisableSiteCreatorPermission;
+            EnableSsCache = siteModel.EnableSsCache;
             Form = siteModel.Form;
             Comments = siteModel.Comments;
             Creator = siteModel.Creator;
@@ -1779,6 +1807,7 @@ namespace Implem.Pleasanter.Models
             if (data.InheritPermission != null) InheritPermission = data.InheritPermission.ToLong().ToLong();
             if (data.Publish != null) Publish = data.Publish.ToBool().ToBool();
             if (data.DisableCrossSearch != null) DisableCrossSearch = data.DisableCrossSearch.ToBool().ToBool();
+            if (data.EnableSsCache != null) EnableSsCache = data.EnableSsCache.ToBool().ToBool();
             if (data.Form != null) Form = data.Form.ToString().ToString();
             if (data.Permissions != null) RecordPermissions = data.Permissions;
             if (data.SiteSettings != null) SiteSettings = data.SiteSettings;
@@ -2053,6 +2082,10 @@ namespace Implem.Pleasanter.Models
                             ApiCount = dataRow[column.ColumnName].ToInt();
                             SavedApiCount = ApiCount;
                             break;
+                        case "EnableSsCache":
+                            EnableSsCache = dataRow[column.ColumnName].ToBool();
+                            SavedEnableSsCache = EnableSsCache;
+                            break;
                         case "Form":
                             Form = dataRow[column.ColumnName].ToString();
                             SavedForm = Form;
@@ -2167,6 +2200,7 @@ namespace Implem.Pleasanter.Models
                 || LockedUser_Updated(context: context)
                 || ApiCountDate_Updated(context: context)
                 || ApiCount_Updated(context: context)
+                || EnableSsCache_Updated(context: context)
                 || Form_Updated(context: context)
                 || Comments_Updated(context: context)
                 || Creator_Updated(context: context)
@@ -2235,6 +2269,7 @@ namespace Implem.Pleasanter.Models
                 || LockedUser_Updated(context: context)
                 || ApiCountDate_Updated(context: context)
                 || ApiCount_Updated(context: context)
+                || EnableSsCache_Updated(context: context)
                 || Form_Updated(context: context)
                 || Comments_Updated(context: context)
                 || Creator_Updated(context: context)
@@ -2378,13 +2413,17 @@ namespace Implem.Pleasanter.Models
                     permissions: RecordPermissions,
                     site: true);
             }
+            var creatorAlreadyInPermissions = RecordPermissions?
+                .Any(o => o.StartsWith($"User,{context.UserId},")) == true;
             statements.Add(Rds.InsertPermissions(
                 param: Rds.PermissionsParam()
                     .ReferenceId(SiteId)
                     .DeptId(0)
                     .UserId(context.UserId)
                     .PermissionType(Permissions.Manager()),
-                _using: notInheritPermission && !DisableSiteCreatorPermission));
+                _using: notInheritPermission
+                    && !DisableSiteCreatorPermission
+                    && !creatorAlreadyInPermissions));
             if (statements.Any(o => o.Using))
             {
                 Repository.ExecuteNonQuery(
@@ -2442,8 +2481,8 @@ namespace Implem.Pleasanter.Models
             SiteSettings.InheritPermission = InheritPermission;
             SiteSettings.AccessStatus = AccessStatus;
             SiteSettings.SetLinkedSiteSettings(context: context);
-            SiteSettings.SetPermissions(
-                context: context,
+            context.SetPermissions(
+                ss: SiteSettings,
                 referenceId: context.Id);
         }
 
@@ -2788,6 +2827,10 @@ namespace Implem.Pleasanter.Models
                 }
                 else
                 {
+                    if (!DraftKeyValid(scApiSiteSetting.DraftKey))
+                    {
+                        return;
+                    }
                     if (currentScript != null)
                     {
                         currentScript.Update(
@@ -2805,6 +2848,8 @@ namespace Implem.Pleasanter.Models
                             kamban: scApiSiteSetting.ScriptKamban,
                             imageLib: scApiSiteSetting.ScriptImageLib,
                             disabled: scApiSiteSetting.Disabled,
+                            draftOutputMode: scApiSiteSetting.DraftOutputMode,
+                            draftKey: scApiSiteSetting.DraftKey,
                             body: scApiSiteSetting.Body);
                     }
                     else
@@ -2825,6 +2870,8 @@ namespace Implem.Pleasanter.Models
                             kamban: scApiSiteSetting.ScriptKamban,
                             imageLib: scApiSiteSetting.ScriptImageLib,
                             disabled: scApiSiteSetting.Disabled,
+                            draftOutputMode: scApiSiteSetting.DraftOutputMode,
+                            draftKey: scApiSiteSetting.DraftKey,
                             body: scApiSiteSetting.Body));
                     }
                 }
@@ -2853,6 +2900,10 @@ namespace Implem.Pleasanter.Models
                 }
                 else
                 {
+                    if (!DraftKeyValid(stApiSiteSetting.DraftKey))
+                    {
+                        return;
+                    }
                     if (currentStyle != null)
                     {
                         currentStyle.Update(
@@ -2870,6 +2921,8 @@ namespace Implem.Pleasanter.Models
                             kamban: stApiSiteSetting.StyleKamban,
                             imageLib: stApiSiteSetting.StyleImageLib,
                             disabled: stApiSiteSetting.Disabled,
+                            draftOutputMode: stApiSiteSetting.DraftOutputMode,
+                            draftKey: stApiSiteSetting.DraftKey,
                             body: stApiSiteSetting.Body);
                     }
                     else
@@ -2890,6 +2943,8 @@ namespace Implem.Pleasanter.Models
                             kamban: stApiSiteSetting.StyleKamban,
                             imageLib: stApiSiteSetting.StyleImageLib,
                             disabled: stApiSiteSetting.Disabled,
+                            draftOutputMode: stApiSiteSetting.DraftOutputMode,
+                            draftKey: stApiSiteSetting.DraftKey,
                             body: stApiSiteSetting.Body));
                     }
                 }
@@ -2918,6 +2973,10 @@ namespace Implem.Pleasanter.Models
                 }
                 else
                 {
+                    if (!DraftKeyValid(htmlApiSiteSetting.DraftKey))
+                    {
+                        return;
+                    }
                     if (currentHtml != null)
                     {
                         currentHtml.Update(
@@ -2936,6 +2995,8 @@ namespace Implem.Pleasanter.Models
                             kamban: htmlApiSiteSetting.HtmlKamban,
                             imageLib: htmlApiSiteSetting.HtmlImageLib,
                             disabled: htmlApiSiteSetting.Disabled,
+                            draftOutputMode: htmlApiSiteSetting.DraftOutputMode,
+                            draftKey: htmlApiSiteSetting.DraftKey,
                             body: htmlApiSiteSetting.Body);
                     }
                     else
@@ -2957,6 +3018,8 @@ namespace Implem.Pleasanter.Models
                             kamban: htmlApiSiteSetting.HtmlKamban,
                             imageLib: htmlApiSiteSetting.HtmlImageLib,
                             disabled: htmlApiSiteSetting.Disabled,
+                            draftOutputMode: htmlApiSiteSetting.DraftOutputMode,
+                            draftKey: htmlApiSiteSetting.DraftKey,
                             body: htmlApiSiteSetting.Body));
                     }
                 }
@@ -3532,8 +3595,18 @@ namespace Implem.Pleasanter.Models
                         res: res,
                         controlId: controlId);
                     break;
+                case "ViewFilterTableSelector":
+                    ViewFilterTableSelector(
+                        context: context,
+                        res: res);
+                    break;
                 case "AddViewFilter":
                     AddViewFilter(
+                        context: context,
+                        res: res);
+                    break;
+                case "ViewSorterTableSelector":
+                    ViewSorterTableSelector(
                         context: context,
                         res: res);
                     break;
@@ -3606,6 +3679,47 @@ namespace Implem.Pleasanter.Models
                     break;
                 case "DeleteNotifications":
                     DeleteNotifications(
+                        context: context,
+                        res: res);
+                    break;
+                case "MoveUpAiProviders":
+                case "MoveDownAiProviders":
+                    SetAiProvidersOrder(
+                        context: context,
+                        res: res,
+                        controlId: controlId);
+                    break;
+                case "NewAiProvider":
+                case "EditAiProvider":
+                    AiProviderDialog(
+                        context: context,
+                        res: res,
+                        controlId: controlId);
+                    break;
+                case "AddAiProvider":
+                    AddAiProvider(
+                        context: context,
+                        res: res,
+                        controlId: controlId);
+                    break;
+                case "UpdateAiProvider":
+                    UpdateAiProvider(
+                        context: context,
+                        res: res,
+                        controlId: controlId);
+                    break;
+                case "CopyAiProviders":
+                    CopyAiProviders(
+                        context: context,
+                        res: res);
+                    break;
+                case "DeleteAiProviders":
+                    DeleteAiProviders(
+                        context: context,
+                        res: res);
+                    break;
+                case "SyncAiProviders":
+                    SyncAiProviders(
                         context: context,
                         res: res);
                     break;
@@ -3980,6 +4094,8 @@ namespace Implem.Pleasanter.Models
                         case DashboardPartType.Index:
                             BaseSiteId = context.Forms.Long("DashboardPartIndexBaseSiteId");
                             break;
+                        default:
+                            break;
                     }
                     var ss = SiteSettingsUtilities.Get(
                         context: context,
@@ -4236,6 +4352,7 @@ namespace Implem.Pleasanter.Models
                 {
                     res.Message(Messages.CanNotPerformed(context: context));
                 }
+                else
                 {
                     SiteSettings.FilterColumns = context.Forms.List("FilterColumnsAll");
                     res.Html(
@@ -5575,6 +5692,11 @@ namespace Implem.Pleasanter.Models
         {
             var validateInputs = context.Forms.Data("ProcessValidateInputsTemp").Deserialize<SettingList<ValidateInput>>();
             var validateInput = validateInputs?.Get(context.Forms.Int("ProcessValidateInputIdTemp"));
+            if (validateInputs == null || validateInput == null)
+            {
+                res.Message(Messages.InvalidRequest(context: context));
+                return;
+            }
             validateInput.ColumnName = context.Forms.Data("ProcessValidateInputColumnName");
             validateInput.Required = context.Forms.Bool("ProcessValidateInputRequired");
             validateInput.ClientRegexValidation = context.Forms.Data("ProcessValidateInputClientRegexValidation");
@@ -5644,9 +5766,7 @@ namespace Implem.Pleasanter.Models
         /// </summary>
         public string SearchProcessAccessControl(Context context, ResponseCollection res)
         {
-            var process = SiteSettings.Processes.Get(context.Forms.Int("ProcessId"))
-                ?? new Process();
-            var currentPermissions = process.GetPermissions(ss: SiteSettings);
+            var currentPermissions = ProcessPermissions(context: context);
             var sourcePermissions = PermissionUtilities.SourceCollection(
                 context: context,
                 ss: SiteSettings,
@@ -5772,6 +5892,11 @@ namespace Implem.Pleasanter.Models
         {
             var dataChanges = context.Forms.Data("ProcessDataChangesTemp").Deserialize<SettingList<DataChange>>();
             var dataChange = dataChanges?.Get(context.Forms.Int("ProcessDataChangeIdTemp"));
+            if (dataChanges == null || dataChange == null)
+            {
+                res.Message(Messages.InvalidRequest(context: context));
+                return;
+            }
             dataChange.Update(
                 type: context.Forms.Data("ProcessDataChangeType").ToEnum<DataChange.Types>(),
                 columnName: context.Forms.Data("ProcessDataChangeColumnName"),
@@ -6027,6 +6152,11 @@ namespace Implem.Pleasanter.Models
                 case Error.Types.None:
                     var notifications = context.Forms.Data("ProcessNotificationsTemp").Deserialize<SettingList<Notification>>();
                     var notification = notifications?.Get(context.Forms.Int("ProcessNotificationIdTemp"));
+                    if (notifications == null || notification == null)
+                    {
+                        res.Message(Messages.InvalidRequest(context: context));
+                        return;
+                    }
                     notification.Type = (Notification.Types)context.Forms.Int("ProcessNotificationType");
                     notification.Subject = SiteSettings.LabelTextToColumnName(context.Forms.Data("ProcessNotificationSubject"));
                     notification.Address = SiteSettings.LabelTextToColumnName(context.Forms.Data("ProcessNotificationAddress"));
@@ -6372,6 +6502,34 @@ namespace Implem.Pleasanter.Models
         /// <summary>
         /// Fixed:
         /// </summary>
+        private void ViewFilterTableSelector(
+            Context context,
+            ResponseCollection res,
+            string prefix = "")
+        {
+            var ss = SiteSettings;
+            ss.SetChoiceHash(context: context);
+            var view = SiteSettings.Views.Get(context.Forms.Int("ViewId"))
+                ?? new View(context: context, ss: SiteSettings);
+            view.SetByForm(
+                context: context,
+                ss: SiteSettings);
+            var joinKey = context.Forms.Data($"{prefix}ViewFilterTableSelector");
+            res.Html(
+                $"#{prefix}ViewFilterSelector",
+                new HtmlBuilder().OptionCollection(
+                    context: context,
+                    optionCollection: ss.ViewFilterOptions(
+                        context: context,
+                        view: view,
+                        joinKey: joinKey,
+                        currentTableOnly: false)
+                            ?.ToDictionary(o => o.Key, o => new ControlData(o.Value))));
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
         private void AddViewFilter(
             Context context,
             ResponseCollection res,
@@ -6395,6 +6553,28 @@ namespace Implem.Pleasanter.Models
                             prefix: prefix))
                     .Remove($"#{prefix}ViewFilterSelector option:selected");
             }
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private void ViewSorterTableSelector(
+            Context context,
+            ResponseCollection res,
+            string prefix = "")
+        {
+            var ss = SiteSettings;
+            ss.SetChoiceHash(context: context);
+            var joinKey = context.Forms.Data($"{prefix}ViewSorterTableSelector");
+            res.Html(
+                $"#{prefix}ViewSorterSelector",
+                new HtmlBuilder().OptionCollection(
+                    context: context,
+                    optionCollection: ss.ViewSorterOptions(
+                        context: context,
+                        joinKey: joinKey,
+                        currentTableOnly: false)
+                            ?.ToDictionary(o => o.Key, o => new ControlData(o.Value))));
         }
 
         /// <summary>
@@ -6474,6 +6654,7 @@ namespace Implem.Pleasanter.Models
             if (selected?.Any() != true)
             {
                 res.Message(Messages.SelectTargets(context: context)).ToJson();
+                return;
             }
             if (SiteSettings.Views != null)
             {
@@ -6804,6 +6985,307 @@ namespace Implem.Pleasanter.Models
                     res.ReplaceAll("#EditNotificationWrap", new HtmlBuilder()
                         .EditNotification(context: context, ss: SiteSettings));
                 }
+            }
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private void AiProviderDialog(
+            Context context, ResponseCollection res, string controlId)
+        {
+            if (Parameters.AiConnect?.Rag.Enabled != true)
+            {
+                res.Message(Messages.Restricted(context: context));
+                return;
+            }
+            AiProvider aiProvider;
+            if (controlId == "NewAiProvider")
+            {
+                aiProvider = new AiProvider(context: context);
+            }
+            else
+            {
+                aiProvider = SiteSettings.AiProviders?.Get(context.Forms.Int("AiProviderId"));
+                if (aiProvider == null)
+                {
+                    res.Message(Messages.NotFound(context: context));
+                    return;
+                }
+            }
+            res.Html("#AiProviderDialog", SiteUtilities.AiProviderDialog(
+                context: context,
+                ss: SiteSettings,
+                controlId: controlId,
+                aiProvider: aiProvider));
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private void AddAiProvider(Context context, ResponseCollection res, string controlId)
+        {
+            if (Parameters.AiConnect?.Rag.Enabled != true)
+            {
+                res.Message(Messages.Restricted(context: context));
+            }
+            else
+            {
+                var providerType = context.Forms.Data("AiProviderProviderType");
+                var connectionSetting = AiProviderUtilities.ResolveConnectionSetting(
+                    providerType: providerType,
+                    submitted: context.Forms.Data("AiProviderConnectionSetting"),
+                    stored: null);
+                var invalid = SiteValidators.SetAiProvider(
+                    context: context,
+                    ss: SiteSettings,
+                    connectionSetting: connectionSetting);
+                switch (invalid.Type)
+                {
+                    case Error.Types.None:
+                        SiteSettings.AiProviders.Add(new AiProvider(
+                            id: SiteSettings.AiProviders.MaxOrDefault(o => o.Id) + 1,
+                            title: context.Forms.Data("AiProviderTitle"),
+                            format: context.Forms.Data("AiProviderFormat"),
+                            providerType: providerType,
+                            connectionSetting: connectionSetting,
+                            disabled: context.Forms.Bool("AiProviderDisabled")));
+                        SetAiProvidersResponseCollection(context: context, res: res);
+                        break;
+                    default:
+                        res.Message(invalid.Message(context: context));
+                        break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private void UpdateAiProvider(Context context, ResponseCollection res, string controlId)
+        {
+            if (Parameters.AiConnect?.Rag.Enabled != true)
+            {
+                res.Message(Messages.Restricted(context: context));
+            }
+            else
+            {
+                var aiProvider = SiteSettings.AiProviders.Get(context.Forms.Int("AiProviderId"));
+                if (aiProvider == null)
+                {
+                    res.Message(Messages.NotFound(context: context));
+                }
+                else
+                {
+                    var providerType = context.Forms.Data("AiProviderProviderType");
+                    var connectionSetting = AiProviderUtilities.ResolveConnectionSetting(
+                        providerType: providerType,
+                        submitted: context.Forms.Data("AiProviderConnectionSetting"),
+                        stored: aiProvider);
+                    var invalid = SiteValidators.SetAiProvider(
+                        context: context,
+                        ss: SiteSettings,
+                        connectionSetting: connectionSetting);
+                    switch (invalid.Type)
+                    {
+                        case Error.Types.None:
+                            aiProvider.Update(
+                                title: context.Forms.Data("AiProviderTitle"),
+                                format: context.Forms.Data("AiProviderFormat"),
+                                providerType: providerType,
+                                connectionSetting: connectionSetting,
+                                disabled: context.Forms.Bool("AiProviderDisabled"));
+                            SetAiProvidersResponseCollection(context: context, res: res);
+                            break;
+                        default:
+                            res.Message(invalid.Message(context: context));
+                            break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private void SetAiProvidersOrder(
+            Context context, ResponseCollection res, string controlId)
+        {
+            if (Parameters.AiConnect?.Rag.Enabled != true)
+            {
+                res.Message(Messages.Restricted(context: context));
+            }
+            else
+            {
+                var selected = context.Forms.IntList("EditAiProvider");
+                if (selected?.Any() != true)
+                {
+                    res.Message(Messages.SelectTargets(context: context)).ToJson();
+                }
+                else
+                {
+                    SiteSettings.AiProviders.MoveUpOrDown(
+                        ColumnUtilities.ChangeCommand(controlId), selected);
+                    ReplaceAiProvidersGrid(context: context, res: res);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private void CopyAiProviders(Context context, ResponseCollection res)
+        {
+            if (Parameters.AiConnect?.Rag.Enabled != true)
+            {
+                res.Message(Messages.Restricted(context: context));
+            }
+            else
+            {
+                var selected = context.Forms.IntList("EditAiProvider");
+                if (selected?.Any() != true)
+                {
+                    res.Message(Messages.SelectTargets(context: context)).ToJson();
+                }
+                else
+                {
+                    SiteSettings.AiProviders.Copy(selected);
+                    ReplaceAiProvidersGrid(context: context, res: res);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private void DeleteAiProviders(Context context, ResponseCollection res)
+        {
+            if (Parameters.AiConnect?.Rag.Enabled != true)
+            {
+                res.Message(Messages.Restricted(context: context));
+            }
+            else
+            {
+                var selected = context.Forms.IntList("EditAiProvider");
+                if (selected?.Any() != true)
+                {
+                    res.Message(Messages.SelectTargets(context: context)).ToJson();
+                }
+                else
+                {
+                    SiteSettings.AiProviders.Delete(selected);
+                    ReplaceAiProvidersGrid(context: context, res: res);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private void SyncAiProviders(Context context, ResponseCollection res)
+        {
+            if (Parameters.AiConnect?.Rag.Enabled != true)
+            {
+                res.Message(Messages.Restricted(context: context));
+                return;
+            }
+            var selected = context.Forms.IntList("EditAiProvider");
+            if (selected?.Any() != true)
+            {
+                res.Message(Messages.SelectTargets(context: context));
+                return;
+            }
+            if (selected.Count > 1)
+            {
+                res.Message(Messages.SelectOne(context: context));
+                return;
+            }
+            var aiProvider = SiteSettings.AiProviders?.Get(selected.First());
+            if (aiProvider == null)
+            {
+                res.Message(Messages.NotFound(context: context));
+                return;
+            }
+            if (aiProvider.Disabled == true
+                || SiteSettings.AiProvidersAllDisabled == true)
+            {
+                res.Message(Messages.InvalidAiProviderSetting(
+                    context: context));
+                return;
+            }
+            if (Parameters.AiConnect.Rag.OutputFilePath.IsNullOrEmpty())
+            {
+                res.Message(Messages.AiConnectOutputFilePathNotSet(context: context));
+                return;
+            }
+            if (SiteSettings.ReferenceType != "Issues"
+                && SiteSettings.ReferenceType != "Results")
+            {
+                res.Message(Messages.InvalidRequest(context: context));
+                return;
+            }
+            if (Implem.Pleasanter.Libraries.AiConnect.AiConnectQueueUtilities.ShouldQueue())
+            {
+                var backgroundJobId =
+                    Implem.Pleasanter.Libraries.AiConnect.AiConnectQueueUtilities
+                        .EnqueueResync(
+                            context: context,
+                            ss: SiteSettings,
+                            aiProvider: aiProvider);
+                if (backgroundJobId == 0)
+                {
+                    res.Message(Messages.AiConnectResyncAlreadyEnqueued(context: context));
+                    return;
+                }
+                res.Html(
+                    target: "#Message",
+                    value: BackgroundJobQueue.EnqueuedMessageHtml(
+                        context: context,
+                        backgroundJobId: backgroundJobId));
+                return;
+            }
+            var result = Implem.Pleasanter.Libraries.AiConnect.AiConnectResyncUtilities.Resync(
+                context: context,
+                ss: SiteSettings,
+                aiProvider: aiProvider);
+            if (result.ErrorData.Type != Error.Types.None)
+            {
+                res.Message(Messages.FailedSyncAiProviders(context: context));
+                return;
+            }
+            res.Message(Messages.SyncAiProvidersCompleted(
+                context: context,
+                data: new string[]
+                {
+                    result.DeletedCount.ToString(),
+                    result.SucceededCount.ToString(),
+                    (result.FailedCount + result.DeleteFailedCount).ToString()
+                }));
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private void ReplaceAiProvidersGrid(Context context, ResponseCollection res)
+        {
+            res
+                .ReplaceAll("#EditAiProviderWrap", new HtmlBuilder()
+                    .EditAiProvider(context: context, ss: SiteSettings));
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private void SetAiProvidersResponseCollection(Context context, ResponseCollection res)
+        {
+            if (Parameters.AiConnect?.Rag.Enabled != true)
+            {
+                res.Message(Messages.Restricted(context: context));
+            }
+            else
+            {
+                ReplaceAiProvidersGrid(context: context, res: res);
+                res.CloseDialog();
             }
         }
 
@@ -7375,6 +7857,11 @@ namespace Implem.Pleasanter.Models
             Context context, ResponseCollection res, string controlId)
         {
             Export = Session_Export(context: context);
+            if (Export == null)
+            {
+                res.Message(Messages.NotFound(context: context));
+                return;
+            }
             var selected = context.Forms.List("ExportColumns");
             if (selected.Count() != 1)
             {
@@ -7385,10 +7872,15 @@ namespace Implem.Pleasanter.Models
                 int id = 1;
                 var columns = new List<ExportColumn>();
                 var selectedNewId = "";
-                context.Forms.List("ExportColumnsAll").ForEach(o =>
+                foreach (var o in context.Forms.List("ExportColumnsAll"))
                 {
                     var export = o.Deserialize<ExportColumn>()
-                        ?? Export.Columns.Where(c => c.ToJson() == o).FirstOrDefault();
+                        ?? Export.Columns?.Where(c => c.ToJson() == o).FirstOrDefault();
+                    if (export == null)
+                    {
+                        res.Message(Messages.InvalidRequest(context: context));
+                        return;
+                    }
                     if (export.ToJson() == selected[0]) selectedNewId = id.ToString();
                     columns.Add(new ExportColumn()
                     {
@@ -7401,7 +7893,7 @@ namespace Implem.Pleasanter.Models
                         SiteTitle = export.SiteTitle,
                         Column = export.Column
                     });
-                });
+                }
                 Export.Columns = columns;
                 Export.SetColumns(
                     context: context,
@@ -7411,7 +7903,8 @@ namespace Implem.Pleasanter.Models
                     value: Export.ToJson());
                 var column = Export.Columns.FirstOrDefault(o =>
                     o.Id.ToString() == selectedNewId);
-                if (column == null)
+                if (column == null
+                    || column.Column == null)
                 {
                     res.Message(Messages.NotFound(context: context));
                 }
@@ -7598,8 +8091,22 @@ namespace Implem.Pleasanter.Models
         /// <summary>
         /// Fixed:
         /// </summary>
+        private static bool DraftKeyValid(string draftKey)
+        {
+            return draftKey.IsNullOrEmpty()
+                || System.Text.RegularExpressions.Regex.IsMatch(draftKey, "^[A-Za-z0-9_-]*$");
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
         private void AddStyle(Context context, ResponseCollection res, string controlId)
         {
+            if (!DraftKeyValid(context.Forms.Data("StyleDraftKey")))
+            {
+                res.Message(Messages.InvalidRequest(context: context));
+                return;
+            }
             SiteSettings.Styles.Add(new Style(
                 id: SiteSettings.Styles.MaxOrDefault(o => o.Id) + 1,
                 title: context.Forms.Data("StyleTitle"),
@@ -7616,6 +8123,8 @@ namespace Implem.Pleasanter.Models
                 kamban: context.Forms.Bool("StyleKamban"),
                 imageLib: context.Forms.Bool("StyleImageLib"),
                 disabled: context.Forms.Bool("StyleDisabled"),
+                draftOutputMode: context.Forms.Int("StyleDraftOutputMode"),
+                draftKey: context.Forms.Data("StyleDraftKey"),
                 body: context.Forms.Data("StyleBody")));
             res
                 .ReplaceAll("#EditStyleWrap", new HtmlBuilder()
@@ -7630,6 +8139,11 @@ namespace Implem.Pleasanter.Models
         /// </summary>
         private void UpdateStyle(Context context, ResponseCollection res, string controlId)
         {
+            if (!DraftKeyValid(context.Forms.Data("StyleDraftKey")))
+            {
+                res.Message(Messages.InvalidRequest(context: context));
+                return;
+            }
             SiteSettings.Styles?
                 .FirstOrDefault(o => o.Id == context.Forms.Int("StyleId"))?
                 .Update(
@@ -7647,6 +8161,8 @@ namespace Implem.Pleasanter.Models
                     kamban: context.Forms.Bool("StyleKamban"),
                     imageLib: context.Forms.Bool("StyleImageLib"),
                     disabled: context.Forms.Bool("StyleDisabled"),
+                    draftOutputMode: context.Forms.Int("StyleDraftOutputMode"),
+                    draftKey: context.Forms.Data("StyleDraftKey"),
                     body: context.Forms.Data("StyleBody"));
             res
                 .ReplaceAll("#EditStyleWrap", new HtmlBuilder()
@@ -7768,6 +8284,11 @@ namespace Implem.Pleasanter.Models
         /// </summary>
         private void AddScript(Context context, ResponseCollection res, string controlId)
         {
+            if (!DraftKeyValid(context.Forms.Data("ScriptDraftKey")))
+            {
+                res.Message(Messages.InvalidRequest(context: context));
+                return;
+            }
             SiteSettings.Scripts.Add(new Script(
                 id: SiteSettings.Scripts.MaxOrDefault(o => o.Id) + 1,
                 title: context.Forms.Data("ScriptTitle"),
@@ -7784,6 +8305,8 @@ namespace Implem.Pleasanter.Models
                 kamban: context.Forms.Bool("ScriptKamban"),
                 imageLib: context.Forms.Bool("ScriptImageLib"),
                 disabled: context.Forms.Bool("ScriptDisabled"),
+                draftOutputMode: context.Forms.Int("ScriptDraftOutputMode"),
+                draftKey: context.Forms.Data("ScriptDraftKey"),
                 body: context.Forms.Data("ScriptBody")));
             res
                 .ReplaceAll("#EditScriptWrap", new HtmlBuilder()
@@ -7798,6 +8321,11 @@ namespace Implem.Pleasanter.Models
         /// </summary>
         private void UpdateScript(Context context, ResponseCollection res, string controlId)
         {
+            if (!DraftKeyValid(context.Forms.Data("ScriptDraftKey")))
+            {
+                res.Message(Messages.InvalidRequest(context: context));
+                return;
+            }
             SiteSettings.Scripts?
                 .FirstOrDefault(o => o.Id == context.Forms.Int("ScriptId"))?
                 .Update(
@@ -7815,6 +8343,8 @@ namespace Implem.Pleasanter.Models
                     kamban: context.Forms.Bool("ScriptKamban"),
                     imageLib: context.Forms.Bool("ScriptImageLib"),
                     disabled: context.Forms.Bool("ScriptDisabled"),
+                    draftOutputMode: context.Forms.Int("ScriptDraftOutputMode"),
+                    draftKey: context.Forms.Data("ScriptDraftKey"),
                     body: context.Forms.Data("ScriptBody"));
             res
                 .ReplaceAll("#EditScriptWrap", new HtmlBuilder()
@@ -7936,6 +8466,11 @@ namespace Implem.Pleasanter.Models
         /// </summary>
         private void AddHtml(Context context, ResponseCollection res, string controlId)
         {
+            if (!DraftKeyValid(context.Forms.Data("HtmlDraftKey")))
+            {
+                res.Message(Messages.InvalidRequest(context: context));
+                return;
+            }
             SiteSettings.Htmls.Add(new Html(
                 id: SiteSettings.Htmls.MaxOrDefault(o => o.Id) + 1,
                 title: context.Forms.Data("HtmlTitle"),
@@ -7953,6 +8488,8 @@ namespace Implem.Pleasanter.Models
                 kamban: context.Forms.Bool("HtmlKamban"),
                 imageLib: context.Forms.Bool("HtmlImageLib"),
                 disabled: context.Forms.Bool("HtmlDisabled"),
+                draftOutputMode: context.Forms.Int("HtmlDraftOutputMode"),
+                draftKey: context.Forms.Data("HtmlDraftKey"),
                 body: context.Forms.Data("HtmlBody")));
             res
                 .ReplaceAll("#EditHtmlWrap", new HtmlBuilder()
@@ -7967,6 +8504,11 @@ namespace Implem.Pleasanter.Models
         /// </summary>
         private void UpdateHtml(Context context, ResponseCollection res, string controlId)
         {
+            if (!DraftKeyValid(context.Forms.Data("HtmlDraftKey")))
+            {
+                res.Message(Messages.InvalidRequest(context: context));
+                return;
+            }
             SiteSettings.Htmls?
                 .FirstOrDefault(o => o.Id == context.Forms.Int("HtmlId"))?
                 .Update(
@@ -7985,6 +8527,8 @@ namespace Implem.Pleasanter.Models
                     kamban: context.Forms.Bool("HtmlKamban"),
                     imageLib: context.Forms.Bool("HtmlImageLib"),
                     disabled: context.Forms.Bool("HtmlDisabled"),
+                    draftOutputMode: context.Forms.Int("HtmlDraftOutputMode"),
+                    draftKey: context.Forms.Data("HtmlDraftKey"),
                     body: context.Forms.Data("HtmlBody"));
             res
                 .ReplaceAll("#EditHtmlWrap", new HtmlBuilder()
@@ -8929,9 +9473,7 @@ namespace Implem.Pleasanter.Models
         /// </summary>
         public string SearchDashboardPartAccessControl(Context context, ResponseCollection res)
         {
-            var process = SiteSettings.Processes.Get(context.Forms.Int("ProcessId"))
-                ?? new Process();
-            var currentPermissions = process.GetPermissions(ss: SiteSettings);
+            var currentPermissions = DashboardPartPermissions(context: context);
             var sourcePermissions = PermissionUtilities.SourceCollection(
                 context: context,
                 ss: SiteSettings,
@@ -9465,8 +10007,8 @@ namespace Implem.Pleasanter.Models
         public string OpenSetNumericRangeDialog(
             Context context, ResponseCollection res, string controlId)
         {
-            SiteSettings.SetPermissions(
-                context: context,
+            context.SetPermissions(
+                ss: SiteSettings,
                 referenceId: SiteId);
             if (context.CanRead(SiteSettings))
             {
@@ -9496,8 +10038,8 @@ namespace Implem.Pleasanter.Models
         public string OpenSetDateRangeDialog(
             Context context, ResponseCollection res, string controlId)
         {
-            SiteSettings.SetPermissions(
-                context: context,
+            context.SetPermissions(
+                ss: SiteSettings,
                 referenceId: SiteId);
             if (context.CanRead(SiteSettings))
             {
@@ -9590,6 +10132,122 @@ namespace Implem.Pleasanter.Models
                         beforeResetCount.ToString(),
                         apiCount.ToString()
                     }));
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        public bool WithinFormLimits(Context context)
+        {
+            var limit = context.ContractSettings.FormLimit();
+            if (limit <= 0)
+            {
+                return true;
+            }
+            var monthStart = FormCountMonthStart(context: context);
+            var current = Repository.ExecuteScalar_int(
+                context: context,
+                statements: Rds.SelectTenants(
+                    column: Rds.TenantsColumn().FormCount(),
+                    where: Rds.TenantsWhere()
+                        .TenantId(context.TenantId)
+                        .FormCountDate(monthStart, _operator: ">=")));
+            return current < limit;
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        public void AddFormCount(Context context)
+        {
+            if (context.ContractSettings.FormLimit() <= 0)
+            {
+                return;
+            }
+            var monthStart = FormCountMonthStart(context: context);
+            for (var attempt = 0; attempt < 3; attempt++)
+            {
+                var incremented = Repository.ExecuteNonQuery(
+                    context: context,
+                    statements: Rds.UpdateTenants(
+                        where: Rds.TenantsWhere()
+                            .TenantId(context.TenantId)
+                            .FormCountDate(monthStart, _operator: ">="),
+                        param: Rds.TenantsParam()
+                            .FormCount(raw: "\"Tenants\".\"FormCount\"+1"),
+                        addUpdatorParam: false,
+                        addUpdatedTimeParam: false));
+                if (incremented > 0)
+                {
+                    return;
+                }
+                var beforeResetCount = Repository.ExecuteScalar_int(
+                    context: context,
+                    statements: Rds.SelectTenants(
+                        column: Rds.TenantsColumn().FormCount(),
+                        where: Rds.TenantsWhere().TenantId(context.TenantId)));
+                var reset = Repository.ExecuteNonQuery(
+                    context: context,
+                    statements: Rds.UpdateTenants(
+                        where: Rds.TenantsWhere()
+                            .TenantId(context.TenantId)
+                            .Or(or: Rds.TenantsWhere()
+                                .FormCountDate(_operator: " is null")
+                                .FormCountDate(monthStart, _operator: "<")),
+                        param: Rds.TenantsParam()
+                            .FormCount(1)
+                            .FormCountDate(monthStart),
+                        addUpdatorParam: false,
+                        addUpdatedTimeParam: false));
+                if (reset > 0)
+                {
+                    LogFormCountReset(
+                        context: context,
+                        beforeResetCount: beforeResetCount);
+                    return;
+                }
+            }
+            LogFormCountFailed(context: context);
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private static DateTime FormCountMonthStart(Context context)
+        {
+            var local = DateTime.Now.ToDateTime().ToLocal(context: context);
+            return new DateTime(local.Year, local.Month, 1);
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private static void LogFormCountReset(Context context, int beforeResetCount)
+        {
+            new SysLogModel(
+                context: context,
+                method: nameof(LogFormCountReset),
+                message: Displays.FormCountReset(
+                    context: context,
+                    new string[]
+                    {
+                        beforeResetCount.ToString(),
+                        "1"
+                    }));
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private static void LogFormCountFailed(Context context)
+        {
+            new SysLogModel(
+                context: context,
+                method: nameof(AddFormCount),
+                message: Displays.FormCountFailed(
+                    context: context,
+                    data: context.TenantId.ToString()),
+                sysLogType: SysLogModel.SysLogTypes.Warning);
         }
 
         /// <summary>

@@ -1,17 +1,17 @@
 ﻿using Azure.Identity;
 using Azure.Storage.Blobs;
-using HealthChecks.UI.Client;
 using Implem.DefinitionAccessor;
 using Implem.Libraries.Utilities;
 using Implem.Pleasanter.Libraries.BackgroundServices;
 using Implem.Pleasanter.Libraries.DataSources;
 using Implem.Pleasanter.Libraries.Initializers;
-using Implem.Pleasanter.Libraries.Migrators;
 using Implem.Pleasanter.Libraries.Requests;
+using Implem.Pleasanter.Libraries.Scim;
 using Implem.Pleasanter.Libraries.Security;
 using Implem.Pleasanter.Libraries.Server;
 using Implem.Pleasanter.Libraries.Settings;
 using Implem.Pleasanter.Libraries.TrialLicenses;
+using Implem.Pleasanter.Libraries.Redis;
 using Implem.Pleasanter.Models;
 using Implem.PleasanterFilters;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -19,7 +19,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
@@ -32,6 +31,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Primitives;
+using ModelContextProtocol;
 using NLog;
 using NLog.Web;
 using System;
@@ -46,9 +46,11 @@ using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Mvc.ActionConstraints;
 using Microsoft.AspNetCore.RateLimiting;
-using System.Threading.RateLimiting;
 using Implem.Pleasanter.Libraries.Security.Captcha;
+using Implem.Pleasanter.Libraries.Extensions;
+using Implem.Pleasanter.Libraries.RateLimit;
 using Implem.Pleasanter.MCP.Infrastructure;
+using Implem.Pleasanter.MCP.Utilities;
 using Implem.Pleasanter.Middlewares;
 
 namespace Implem.Pleasanter.NetCore
@@ -74,6 +76,30 @@ namespace Implem.Pleasanter.NetCore
                     new SysLogModel(
                         context: context,
                         e: e));
+            }
+            if (Parameters.RateLimit?.ValidationWarnings?.Count > 0)
+            {
+                foreach (var warning in Parameters.RateLimit.ValidationWarnings)
+                {
+                    new SysLogModel(
+                        context: context,
+                        method: nameof(Startup),
+                        message: $"[RateLimit] {warning}",
+                        sysLogType: SysLogModel.SysLogTypes.Warning);
+                }
+            }
+            if (Parameters.Authentication.TrustedProxyParameters?.Enabled == true)
+            {
+                var forwardedHeaders = Parameters.Security.ForwardedHeaders;
+                if ((forwardedHeaders?.KnownNetworks?.Count ?? 0) == 0
+                    && (forwardedHeaders?.KnownProxies?.Count ?? 0) == 0)
+                {
+                    new SysLogModel(
+                        context: context,
+                        method: nameof(Startup),
+                        message: "[TrustedProxy] KnownNetworks/KnownProxies are empty.",
+                        sysLogType: SysLogModel.SysLogTypes.Warning);
+                }
             }
             TrialLicenseUtilities.Initialize();
             LogManager.Setup()
@@ -106,6 +132,11 @@ namespace Implem.Pleasanter.NetCore
             services.AddSession(options =>
             {
                 options.IdleTimeout = TimeSpan.FromMinutes(Parameters.Session.RetentionPeriod);
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SameSite = SameSiteMode.Lax;
+                options.Cookie.SecurePolicy = Parameters.Security.SecureCookies
+                    ? CookieSecurePolicy.Always
+                    : CookieSecurePolicy.SameAsRequest;
             });
             var mvcBuilder = services.AddMvc(
                 options =>
@@ -191,6 +222,7 @@ namespace Implem.Pleasanter.NetCore
                 ConfigureIISIntegration(services);
             }
             ConfigureMcpServer(services);
+            ConfigureRateLimiters(services);
             services.Configure<KestrelServerOptions>(options =>
             {
                 options.AllowSynchronousIO = true;
@@ -201,6 +233,7 @@ namespace Implem.Pleasanter.NetCore
             {
                 services
                     .AddHealthChecks()
+                    .AddWarmupHealthCheck()
                     .AddDatabaseHealthCheck(
                         enableDatabaseCheck: Parameters.Security.HealthCheck.EnableDatabaseCheck,
                         dbms: Parameters.Rds.Dbms,
@@ -237,11 +270,11 @@ namespace Implem.Pleasanter.NetCore
             {
                 options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
             });
+            services.AddHostedService<ApplicationWarmupHostedService>();
             services.AddHostedService<CustomQuartzHostedService>();
-            new TimerBackground().Init();
-            BackgroundServerScriptUtilities.InitSchedule();
             var blobContainerUri = Parameters.Security.AspNetCoreDataProtection?.BlobContainerUri;
             var keyIdentifier = Parameters.Security.AspNetCoreDataProtection?.KeyIdentifier;
+            var keyValueStoreConnectionString = Parameters.Security.AspNetCoreDataProtection?.KeyValueStoreConnectionString;
             if (!blobContainerUri.IsNullOrEmpty()
                 && !keyIdentifier.IsNullOrEmpty())
             {
@@ -250,11 +283,27 @@ namespace Implem.Pleasanter.NetCore
                 var blobClient = blobContainer.GetBlobClient(Parameters.Security.AspNetCoreDataProtection?.KeyFileName ?? "keys.xml");
                 services
                     .AddDataProtection()
+                    .SetApplicationName(Implem.Libraries.Utilities.Environments.ServiceName)
                     .PersistKeysToAzureBlobStorage(blobClient)
                     .ProtectKeysWithAzureKeyVault(new Uri(keyIdentifier), new DefaultAzureCredential());
             }
+            else if (!keyValueStoreConnectionString.IsNullOrEmpty())
+            {
+                ValidateAspNetCoreDataProtectionKeyValueStoreParameters(keyValueStoreConnectionString);
+                services
+                    .AddDataProtection()
+                    .SetApplicationName(Implem.Libraries.Utilities.Environments.ServiceName)
+                    .PersistKeysToStackExchangeRedis(
+                        DataProtectionForRedisConnection.Connection,
+                        GetAspNetCoreDataProtectionKeyValueStoreKeyName());
+                AddAspNetCoreDataProtectionXmlEncryptor(services);
+            }
             else
             {
+                SetDefaultAspNetCoreDataProtectionXmlAesKey();
+                services
+                    .AddDataProtection()
+                    .SetApplicationName(Implem.Libraries.Utilities.Environments.ServiceName);
                 services
                     .AddOptions<KeyManagementOptions>()
                     .Configure<IServiceScopeFactory>((options, factory) =>
@@ -322,9 +371,11 @@ namespace Implem.Pleasanter.NetCore
         {
             if (Parameters.McpServer?.Enabled == true)
             {
+                var options = new JsonSerializerOptions(McpJsonUtilities.DefaultOptions);
+                options.Converters.Add(new ColumnFilterHashJsonConverter());
                 services.AddMcpServer()
                     .WithHttpTransport()
-                    .WithToolsFromAssembly()
+                    .WithToolsFromAssembly(serializerOptions: options)
                     .WithPromptsFromAssembly()
                     .WithResourcesFromAssembly()
                     .WithRequestFilters(requestFilters =>
@@ -334,6 +385,7 @@ namespace Implem.Pleasanter.NetCore
                             var result = await next(context, cancellationToken);
                             if (result?.Tools != null)
                             {
+                                ColumnFilterHashInputSchemaUtilities.Correct(result.Tools);
                                 result.Tools = result.Tools
                                     .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
                                     .ToList();
@@ -341,25 +393,82 @@ namespace Implem.Pleasanter.NetCore
                             return result;
                         });
                     });
-
-                var rateLimit = Parameters.McpServer.RateLimit;
-
-                if (rateLimit?.AnyEnabled == true)
-                {
-                    services.AddRateLimiter(options =>
-                    {
-                        var limiters = McpRateLimitHelper.CreateRateLimiters(rateLimit);
-
-                        if (limiters.Count > 0)
-                        {
-                            options.GlobalLimiter = PartitionedRateLimiter.CreateChained(limiters.ToArray());
-                        }
-
-                        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-                        options.OnRejected = McpRateLimitHelper.CreateOnRejectedHandler(defaultRetryAfterSeconds: 60);
-                    });
-                }
             }
+        }
+
+        private static void ConfigureRateLimiters(IServiceCollection services)
+        {
+            var bodyRateLimit = Parameters.RateLimit;
+
+            var hasRateLimitLicense = Parameters.AllowRateLimit();
+            var anyActive = hasRateLimitLicense && bodyRateLimit?.AnyActive == true;
+
+            if (anyActive)
+            {
+                services.AddRateLimiter(options =>
+                {
+                    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+                    if (bodyRateLimit.GlobalLimiter != null
+                        && bodyRateLimit.GlobalLimiter.EffectiveMode(bodyRateLimit.Mode) == "On")
+                    {
+                        options.GlobalLimiter = Libraries.RateLimit.BodyRateLimitHelper.BuildGlobalLimiter(bodyRateLimit);
+                    }
+
+                    foreach (var name in Libraries.RateLimit.BodyRateLimitHelper.PolicyNames)
+                    {
+                        var policyName = name;
+                        options.AddPolicy(policyName, ctx =>
+                            Libraries.RateLimit.BodyRateLimitHelper.BuildPolicy(ctx, policyName));
+                    }
+
+                    options.OnRejected = Libraries.RateLimit.BodyRateLimitHelper.OnRejectedAsync;
+                });
+            }
+
+            if (hasRateLimitLicense
+                && (bodyRateLimit?.AnyActive == true || bodyRateLimit?.AnyLogOnly == true))
+            {
+                services.AddHostedService<Libraries.RateLimit.BodyRateLimitMetricsSnapshotService>();
+            }
+        }
+
+        private static void SetDefaultAspNetCoreDataProtectionXmlAesKey()
+        {
+            var aspNetCoreDataProtection = Parameters.Security.AspNetCoreDataProtection;
+            if (aspNetCoreDataProtection != null
+                && aspNetCoreDataProtection.XmlAesKey.IsNullOrEmpty())
+            {
+                aspNetCoreDataProtection.XmlAesKey = Parameters.Service.Name;
+            }
+        }
+
+        private static void ValidateAspNetCoreDataProtectionKeyValueStoreParameters(string keyValueStoreConnectionString)
+        {
+            var xmlAesKey = Parameters.Security.AspNetCoreDataProtection?.XmlAesKey;
+            if (!keyValueStoreConnectionString.IsNullOrEmpty()
+                && xmlAesKey.IsNullOrEmpty())
+            {
+                throw new InvalidOperationException(
+                    "Security.AspNetCoreDataProtection.XmlAesKey is required when Security.AspNetCoreDataProtection.KeyValueStoreConnectionString is set.");
+            }
+        }
+
+        private static string GetAspNetCoreDataProtectionKeyValueStoreKeyName()
+        {
+            return Strings.CoalesceEmpty(
+                Parameters.Security.AspNetCoreDataProtection?.KeyValueStoreKeyName,
+                $"{Implem.Libraries.Utilities.Environments.ServiceName}:DataProtection-Keys");
+        }
+
+        private static void AddAspNetCoreDataProtectionXmlEncryptor(IServiceCollection services)
+        {
+            services
+                .AddOptions<KeyManagementOptions>()
+                .Configure<IServiceScopeFactory>((options, factory) =>
+                {
+                    options.XmlEncryptor = new AspNetCoreKeyManagementXmlEncryptor();
+                });
         }
 
         private IEnumerable<string> GetExtendedLibraryPaths()
@@ -374,9 +483,18 @@ namespace Implem.Pleasanter.NetCore
             return list;
         }
 
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(
+            IApplicationBuilder app,
+            IWebHostEnvironment env,
+            IHostApplicationLifetime lifetime)
         {
+            SiteInfo.ApplicationLifetime = lifetime;
+            app.UseTrustedProxySourceIpCapture();
             app.UseForwardedHeaders();
+            if (Parameters.Service.DisableHtmlCache == true)
+            {
+                app.UseNoCacheHtml();
+            }
             app.UseCurrentRequestContext();
             if (env.IsDevelopment())
             {
@@ -411,17 +529,24 @@ namespace Implem.Pleasanter.NetCore
                     await next();
                 });
             }
-            app.Use(async (context, next) => await Invoke(context, next));
+            app.Use(Invoke);
             app.UseStatusCodePages(context =>
             {
                 var statusCode = context.HttpContext.Response.StatusCode;
-                if (statusCode == 400) context.HttpContext.Response.Redirect("/errors/badrequest");
-                else if (statusCode == 404) context.HttpContext.Response.Redirect("/errors/notfound");
-                else if (statusCode == 405) context.HttpContext.Response.Redirect("/errors/badrequest");
-                else if (statusCode == 500) context.HttpContext.Response.Redirect("/errors/internalservererror");
-                else if (statusCode == 401
+                if (IsScimStatusCodePage(context.HttpContext.Request, statusCode))
+                {
+                    var error = ScimResponse.Error(
+                        statusCode: statusCode,
+                        detail: statusCode == StatusCodes.Status404NotFound
+                            ? "Resource not found"
+                            : "Method not allowed");
+                    context.HttpContext.Response.ContentType = error.ContentType;
+                    return context.HttpContext.Response.WriteAsync(error.Content);
+                }
+                var isAjax401 = statusCode == 401
                     && !context.HttpContext.User.Identity.IsAuthenticated
-                    && context.HttpContext.Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                    && context.HttpContext.Request.Headers["X-Requested-With"] == "XMLHttpRequest";
+                if (isAjax401)
                 {
                     context.HttpContext.Response.StatusCode = 403;
                     context.HttpContext.Response.ContentType = "application/json";
@@ -430,12 +555,56 @@ namespace Implem.Pleasanter.NetCore
                         Message = Libraries.Responses.Displays.Unauthorized(context: new Context())
                     }));
                 }
-                else context.HttpContext.Response.Redirect("/errors/internalservererror");
+                else
+                {
+                    var redirectPath = statusCode switch
+                    {
+                        429 => null,
+                        400 or 405 => "/errors/badrequest",
+                        401 => "/users/login",
+                        403 => "/errors/forbidden",
+                        404 => "/errors/notfound",
+                        500 => "/errors/internalservererror",
+                        >= 400 and < 500 => "/errors/badrequest",
+                        _ => "/errors/internalservererror"
+                    };
+                    if (redirectPath != null)
+                    {
+                        context.HttpContext.Response.Redirect(redirectPath);
+                    }
+                }
                 return Task.CompletedTask;
             });
             app.UsePathBase(configuration["pathBase"]);
             app.UseStaticFiles();
             app.UseCookiePolicy();
+            if (ScimSwaggerEnabled())
+            {
+                const string scimSwaggerJsonPath = "/scim/swagger/v1/swagger.json";
+                app.Map(scimSwaggerJsonPath, appBuilder =>
+                {
+                    appBuilder.Run(async context =>
+                    {
+                        var pathBase = context.Request.PathBase.Value;
+                        if (pathBase?.EndsWith(scimSwaggerJsonPath, StringComparison.OrdinalIgnoreCase) == true)
+                        {
+                            pathBase = pathBase[..^scimSwaggerJsonPath.Length];
+                        }
+                        context.Response.ContentType = "application/json; charset=utf-8";
+                        await context.Response.WriteAsync(
+                            ScimOpenApiDocument
+                                .Create($"{context.Request.Scheme}://{context.Request.Host}{pathBase}")
+                                .ToString(Newtonsoft.Json.Formatting.None));
+                    });
+                });
+                app.UseSwaggerUI(options =>
+                {
+                    options.RoutePrefix = "scim/swagger";
+                    options.SwaggerEndpoint("v1/swagger.json", "Pleasanter SCIM API v1");
+                    options.DocumentTitle = "Pleasanter SCIM API";
+                    options.DisplayRequestDuration();
+                });
+            }
             app.UseRouting();
 
             if (env.IsDevelopment())
@@ -444,9 +613,8 @@ namespace Implem.Pleasanter.NetCore
                 {
                     await next.Invoke();
 
-
                     var loggerFactory = context.RequestServices.GetRequiredService<ILoggerFactory>();
-                    var logger = loggerFactory.CreateLogger("RoutingDebugMiddleware"); // ログのカテゴリ名を指定
+                    var logger = loggerFactory.CreateLogger("RoutingDebugMiddleware");
 
                     var endpoint = context.GetEndpoint();
                     if (endpoint != null)
@@ -457,8 +625,8 @@ namespace Implem.Pleasanter.NetCore
                         logger.LogInformation(
                             "Path: {Path}, Matched Route Name: '{RouteName}', Pattern: '{RoutePattern}'",
                             context.Request.Path,
-                            routeName ?? "N/A",      // ルート名がnullの場合は "N/A" を表示
-                            routePattern ?? "N/A"   // パターンがnullの場合は "N/A" を表示
+                            routeName ?? "N/A",
+                            routePattern ?? "N/A"
                         );
                     }
                     else
@@ -469,16 +637,16 @@ namespace Implem.Pleasanter.NetCore
             }
 
             app.UseCors();
+            app.UseWarmupGateMiddleware();
             if (Parameters.McpServer?.Enabled == true)
             {
-                var rateLimit = Parameters.McpServer.RateLimit;
-                if (rateLimit?.AnyEnabled == true)
+                var mcpRateLimit = Parameters.McpServer.RateLimit;
+                if (mcpRateLimit?.AnyEnabled == true)
                 {
                     app.UseWhen(
                         context => context.Request.Path.StartsWithSegments(McpConstants.BasePath),
-                        appBuilder => appBuilder.UseRateLimiter());
+                        appBuilder => appBuilder.UseMcpRateLimitMiddleware(mcpRateLimit));
                 }
-
                 app.UseMcpContextMiddleware();
             }
 
@@ -490,6 +658,19 @@ namespace Implem.Pleasanter.NetCore
             app.UseAuthentication();
             app.UseTrustedProxyAuthentication();
             app.UseAuthorization();
+            var hasRateLimitLicense = Parameters.AllowRateLimit();
+            var bodyAnyActive = hasRateLimitLicense && Parameters.RateLimit?.AnyActive == true;
+            var bodyAnyLogOnly = hasRateLimitLicense && Parameters.RateLimit?.AnyLogOnly == true;
+            if (bodyAnyActive)
+            {
+                app.UseWhen(
+                    context => !context.Request.Path.StartsWithSegments(McpConstants.BasePath),
+                    appBuilder => appBuilder.UseRateLimiter());
+            }
+            if (bodyAnyLogOnly)
+            {
+                app.UseBodyRateLimitObserver();
+            }
             app.UseSessionMiddleware();
             app.UseEndpoints(endpoints =>
             {
@@ -504,7 +685,7 @@ namespace Implem.Pleasanter.NetCore
                         {
                             d.RouteValues.TryGetValue("controller", out var controllerName);
                             d.RouteValues.TryGetValue("action", out var actionName);
-                            d.RouteValues.TryGetValue("page", out var pageName); // Razor Pageの場合
+                            d.RouteValues.TryGetValue("page", out var pageName);
 
                             return new
                             {
@@ -516,9 +697,9 @@ namespace Implem.Pleasanter.NetCore
                                 HttpMethods = d.ActionConstraints?.OfType<HttpMethodActionConstraint>().FirstOrDefault()?.HttpMethods.FirstOrDefault(),
                             };
                         })
-                        .Where(r => r.DisplayName != null) // 不要な情報を除外
-                        .OrderBy(r => r.Controller)        // コントローラー名で並び替え
-                        .ThenBy(r => r.Action)           // アクション名で並び替え
+                        .Where(r => r.DisplayName != null)
+                        .OrderBy(r => r.Controller)
+                        .ThenBy(r => r.Action)
                         .ToList();
 
                         await context.Response.WriteAsJsonAsync(routes, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
@@ -527,24 +708,12 @@ namespace Implem.Pleasanter.NetCore
                 endpoints.MapRazorPages();
                 if (Parameters.Security.HealthCheck.Enabled)
                 {
-                    if (Parameters.Security.HealthCheck.EnableDetailedResponse)
-                    {
-                        endpoints
-                            .MapHealthChecks("/healthz", new HealthCheckOptions()
-                            {
-                                ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse,
-                            })
-                            .RequireHost(Parameters.Security.HealthCheck.RequireHosts ?? Array.Empty<string>());
-                    }
-                    else
-                    {
-                        endpoints
-                            .MapHealthChecks("/healthz")
-                            .RequireHost(Parameters.Security.HealthCheck.RequireHosts ?? Array.Empty<string>());
-                    }
+                    endpoints.MapDefaultHealthChecks(
+                        enableDetailedResponse: Parameters.Security.HealthCheck.EnableDetailedResponse,
+                        requireHosts: Parameters.Security.HealthCheck.RequireHosts);
                 }
                 endpoints.MapControllerRoute(
-                    name: "FormBinaries", // 新規追加
+                    name: "FormBinaries",
                     pattern: "{reference}/{guid}/{controller}/{action}",
                     defaults: new
                     {
@@ -635,6 +804,11 @@ namespace Implem.Pleasanter.NetCore
             });
         }
 
+        private static bool ScimSwaggerEnabled()
+        {
+            return ScimFeatureUtilities.SwaggerEnabled();
+        }
+
         private static Context InitializeContext()
         {
             return new Context(
@@ -647,24 +821,8 @@ namespace Implem.Pleasanter.NetCore
             };
         }
 
-        private static Context ApplicationStartContext()
-        {
-            return new Context(tenantId: 0)
-            {
-                Controller = "Startup.cs",
-                Action = "Application_Start",
-                Id = 0
-            };
-        }
-
-        private static bool isFirst = true;
         public async Task Invoke(HttpContext httpContext, Func<Task> next)
         {
-            if (isFirst)
-            {
-                isFirst = false;
-                Initialize();
-            }
             try
             {
                 await next.Invoke();
@@ -673,16 +831,34 @@ namespace Implem.Pleasanter.NetCore
             {
                 try
                 {
-                    var context = new Context();
+                    Context context;
+                    try
+                    {
+                        context = new Context();
+                    }
+                    catch
+                    {
+                        context = new Context(
+                            request: true,
+                            sessionStatus: false,
+                            sessionData: false,
+                            user: false,
+                            item: false,
+                            setPermissions: false);
+                    }
                     var log = new SysLogModel(context: context);
                     log.SysLogType = SysLogModel.SysLogTypes.Exception;
                     log.ErrMessage = error.Message;
-                    log.ErrStackTrace = error.StackTrace;
+                    log.ErrStackTrace = Parameters.SysLog.OutputErrorDetails
+                        ? error.ToString()
+                        : error.StackTrace;
                     log.Finish(context: context);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    throw;
+                    var logger = LogManager.GetLogger("syslogs");
+                    logger.Error(error, "Global exception occurred.");
+                    logger.Error(ex, "Exception logging failed.");
                 }
                 throw;
             }
@@ -695,23 +871,21 @@ namespace Implem.Pleasanter.NetCore
             log.Finish(context: context);
         }
 
-        private void Initialize()
+        private bool IsScimStatusCodePage(HttpRequest request, int statusCode)
         {
-            Context context = ApplicationStartContext();
-            var log = new SysLogModel(
-                context: context,
-                method: null,
-                message: Parameters.GetLicenseInfo().ToJson());
-            TenantInitializer.Initialize();
-            ExtensionInitializer.Initialize(context: context);
-            UsersInitializer.Initialize(context: context);
-            ItemsInitializer.Initialize(context: context);
-            StatusesMigrator.Migrate(context: context);
-            SiteSettingsMigrator.Migrate(context: context);
-            StatusesInitializer.Initialize(context: context);
-            NotificationInitializer.Initialize();
-            SiteInfo.Refresh(context: context);
-            log.Finish(context: context);
+            if (statusCode != StatusCodes.Status404NotFound
+                && statusCode != StatusCodes.Status405MethodNotAllowed)
+            {
+                return false;
+            }
+            if (request.Path.StartsWithSegments("/scim"))
+            {
+                return true;
+            }
+            var pathBase = configuration["pathBase"];
+            return !string.IsNullOrWhiteSpace(pathBase)
+                && request.Path.StartsWithSegments(pathBase, out var remainingPath)
+                && remainingPath.StartsWithSegments("/scim");
         }
 
         private string CreateNonceValue()
@@ -725,25 +899,14 @@ namespace Implem.Pleasanter.NetCore
         }
     }
 
-    public class SessionMiddleware
+    public class SessionMiddleware(RequestDelegate next)
     {
-        private readonly RequestDelegate _next;
-
-        public SessionMiddleware(RequestDelegate next)
-        {
-            _next = next;
-        }
-
         public async Task Invoke(HttpContext httpContext)
         {
-            const string enabled = "Enabled";
-            if (!httpContext.Session.Keys.Any(key => key == enabled))
+            if (string.IsNullOrWhiteSpace(Context.GetSessionGuidFromCookie()))
             {
-                AspNetCoreCurrentRequestContext.AspNetCoreHttpContext.Current.Session.Set("SessionGuid", System.Text.Encoding.UTF8.GetBytes(Newtonsoft.Json.JsonConvert.SerializeObject(Strings.NewGuid())));
                 SetClientId();
-                httpContext.Session.Set(enabled, new byte[] { 1 });
-
-                Context context = null;
+                Context context;
                 try
                 {
                     context = SessionStartContext();
@@ -757,6 +920,7 @@ namespace Implem.Pleasanter.NetCore
                 SessionUtilities.SetStartTime(context: context);
                 if (WindowsAuthenticated(context))
                 {
+                    context.RotateSessionGuid();
                     Ldap.UpdateOrInsert(
                         context: context,
                         loginId: context.LoginId);
@@ -775,7 +939,7 @@ namespace Implem.Pleasanter.NetCore
                         break;
                 }
             }
-            await _next.Invoke(httpContext);
+            await next.Invoke(httpContext);
         }
 
         private static Context SessionStartContext()
@@ -866,36 +1030,4 @@ namespace Implem.Pleasanter.NetCore
             return app.UseMiddleware<SecurityHeadersMiddleware>();
         }
     }
-
-    public static class HealthCheckMiddlewareExtensions
-    {
-        public static IHealthChecksBuilder AddDatabaseHealthCheck(
-            this IHealthChecksBuilder services,
-            bool enableDatabaseCheck,
-            string dbms,
-            string conStr,
-            string healthQuery)
-        {
-            if (!enableDatabaseCheck) { return services; }
-            switch (dbms)
-            {
-                case "SQLServer":
-                    return services.AddSqlServer(
-                        connectionString: conStr,
-                        healthQuery: healthQuery);
-                case "PostgreSQL":
-                    return services.AddNpgSql(
-                        connectionString: conStr,
-                        healthQuery: healthQuery);
-                case "MySQL":
-                    return services.AddMySql(
-                        connectionString: conStr,
-                        healthQuery: healthQuery);
-                default:
-                    return services;
-            }
-        }
-    }
-
-
 }

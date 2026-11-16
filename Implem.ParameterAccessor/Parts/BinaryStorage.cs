@@ -5,6 +5,8 @@ namespace Implem.ParameterAccessor.Parts
     public class BinaryStorage
     {
         public string Provider;
+        public string AzureBlobStorageAccountUri;
+        public string AzureBlobContainerName;
         public string Path;
         public bool Attachments;
         public bool Images;
@@ -20,6 +22,8 @@ namespace Implem.ParameterAccessor.Parts
         public decimal TotalMaxSize;
         public decimal Image;
         public decimal? ImageLimitSize;
+        public decimal? ImageUploadFileSizeLimit;
+        public decimal? ImageDecodedSizeLimit;
         public decimal? ThumbnailLimitSize;
         public decimal ThumbnailMinSize;
         public decimal ThumbnailMaxSize;
@@ -53,8 +57,8 @@ namespace Implem.ParameterAccessor.Parts
 
         public bool IsLocal(string provider)
         {
-            var p = (!string.IsNullOrEmpty(provider) ? provider : Provider);
-            return p == "Local" || p == "LocalFolder";
+            var p = !string.IsNullOrEmpty(provider) ? provider : Provider;
+            return p == BinaryStorageProviderNames.Local || p == BinaryStorageProviderNames.LocalFolder;
         }
 
         public bool IsLocal()
@@ -82,6 +86,27 @@ namespace Implem.ParameterAccessor.Parts
             }
             var lowerContentType = contentType.ToLower();
             return BrowserAllowMimeTypes.Any(allowMimeTypes => allowMimeTypes.ToLower() == lowerContentType);
+        }
+
+        public bool IsStoreExternal()
+        {
+            return IsLocal() || IsAzureBlob();
+        }
+
+        public bool IsStoreExternal(string provider)
+        {
+            return IsLocal(provider) || IsAzureBlob(provider);
+        }
+
+        public bool IsAzureBlob()
+        {
+            return IsAzureBlob(Provider);
+        }
+
+        public bool IsAzureBlob(string provider)
+        {
+            var p = !string.IsNullOrEmpty(provider) ? provider : Provider;
+            return p == BinaryStorageProviderNames.AzureBlob;
         }
     }
 }

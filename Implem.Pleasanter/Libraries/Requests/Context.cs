@@ -1,4 +1,14 @@
-﻿using AspNetCoreCurrentRequestContext;
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Dynamic;
+using System.Globalization;
+using System.Linq;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using System.Web;
+using AspNetCoreCurrentRequestContext;
 using Implem.DefinitionAccessor;
 using Implem.Factory;
 using Implem.IRds;
@@ -12,26 +22,24 @@ using Implem.Pleasanter.Libraries.Responses;
 using Implem.Pleasanter.Libraries.Security;
 using Implem.Pleasanter.Libraries.Server;
 using Implem.Pleasanter.Libraries.Settings;
+using Implem.Pleasanter.MCP.Infrastructure;
 using Implem.Pleasanter.Models;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Dynamic;
-using System.Globalization;
-using System.Linq;
-using System.Security.Claims;
-using System.Text;
-using System.Web;
 namespace Implem.Pleasanter.Libraries.Requests
 {
     public class Context : ISqlObjectFactory
     {
+        private const string AspNetCoreSessionCookieName = ".AspNetCore.Session";
+        private const string SessionGuidCookiePurpose = "Pleasanter.SessionGuidCookie";
+        private const string SessionGuidCookieName = "Pleasanter_SessionGuid";
+
         public Stopwatch Stopwatch { get; set; } = new Stopwatch();
         public StringBuilder LogBuilder { get; set; } = new StringBuilder();
         public int SysLogsStatus { get; set; } = 200;
@@ -55,8 +63,7 @@ namespace Implem.Pleasanter.Libraries.Requests
         {
             get
             {
-                return AbsolutePath != null &&
-                       AbsolutePath.StartsWith(Implem.Pleasanter.MCP.Infrastructure.McpConstants.BasePath, StringComparison.OrdinalIgnoreCase);
+                return RequestPath.StartsWithSegments(McpConstants.BasePath);
             }
         }
 
@@ -75,6 +82,7 @@ namespace Implem.Pleasanter.Libraries.Requests
         public string ApplicationPath { get; set; }
         public string AbsoluteUri { get; set; }
         public string AbsolutePath { get; set; }
+        public PathString RequestPath { get; set; }
         public string Url { get; set; }
         public string UrlReferrer { get; set; }
         public string Query { get; set; }
@@ -87,6 +95,8 @@ namespace Implem.Pleasanter.Libraries.Requests
         public long SiteId { get; set; }
         public long Id { get; set; }
         public Dictionary<long, Permissions.Types> PermissionHash { get; set; }
+        public Dictionary<string, ContextPermission> ContextPermissions { get; set; } = [];
+        public Dictionary<long, List<string>> ReservedJobTypeLabelHash { get; set; } = [];
         public List<int> Groups { get; set; }
         public string Guid { get; set; }
         public TenantModel.LogoTypes LogoType { get; set; }
@@ -103,6 +113,7 @@ namespace Implem.Pleasanter.Libraries.Requests
         public string TopStyle { get; set; }
         public string TopScript { get; set; }
         public string TenantTheme { get; set; }
+        public int TenantFirstDayOfWeek { get; set; } = FirstDayOfWeeks.Inherit;
         public int DeptId { get; set; }
         public int UserId { get; set; }
         public string LoginId { get; set; }
@@ -122,6 +133,8 @@ namespace Implem.Pleasanter.Libraries.Requests
         public decimal ApiVersion { get; set; } = Parameters.Api.Version;
         public string ApiRequestBody { get; set; }
         public string ApiKey { get; set; }
+        public string ApiAllowIpAddressRange { get; set; }
+        public bool ApiSsCache { get; set; }
         public string RequestDataString { get => !string.IsNullOrEmpty(ApiRequestBody) ? ApiRequestBody : FormString; }
         public string ContentType { get; set; }
         public long ServerScriptDepth { get; set; } = 0;
@@ -235,7 +248,16 @@ namespace Implem.Pleasanter.Libraries.Requests
             if (user) SetUserProperties(sessionStatus, setData);
             if (item) SetSwitchTenant(sessionStatus, setData);
             SetTenantProperties();
+            if (Authenticated && !Parameters.MultiTenant.IsProtectedTenant(TenantId) && ContractSettings.OverDeadline(context: this))
+            {
+                Authenticated = false;
+            }
             if (request) SetPublish();
+            if (User == null)
+            {
+                if (IsForm) { User = User.CreateFormUser(TenantId); }
+                else if (Publish) { User = User.CreatePublishUser(TenantId); }
+            }
             if (request && setPermissions) SetPermissions();
             SetTenantCaches();
         }
@@ -265,6 +287,7 @@ namespace Implem.Pleasanter.Libraries.Requests
                 ApplicationPath = CreateApplicationPath();
                 AbsoluteUri = CreateAbsoluteUri();
                 AbsolutePath = CreateAbsolutePath();
+                RequestPath = request.Path;
                 Url = CreateUrl(AspNetCoreHttpContext.Current.Request);
                 UrlReferrer = CreateUrlReferrer(AspNetCoreHttpContext.Current.Request);
                 Query = AspNetCoreHttpContext.Current.Request.QueryString.ToString();
@@ -297,6 +320,7 @@ namespace Implem.Pleasanter.Libraries.Requests
                 ApplicationPath = context.ApplicationPath;
                 AbsoluteUri = context.AbsoluteUri;
                 AbsolutePath = context.AbsolutePath;
+                RequestPath = context.RequestPath;
                 Url = context.Url;
                 UrlReferrer = context.UrlReferrer;
                 Query = context.Query;
@@ -312,23 +336,85 @@ namespace Implem.Pleasanter.Libraries.Requests
 
         private void SetSessionGuid()
         {
-            try
+            var cookieSessionGuid = GetSessionGuidFromCookie();
+            if (!string.IsNullOrWhiteSpace(cookieSessionGuid))
             {
-                var session = AspNetCoreHttpContext.Current?.Session;
-            }
-            catch (InvalidOperationException)
-            {
+                SessionGuid = cookieSessionGuid;
                 return;
             }
-            var sessionGuid = GetSessionData<string>("SessionGuid");
-            if (!string.IsNullOrWhiteSpace(sessionGuid))
+            SetSessionGuidCookie(SessionGuid);
+        }
+
+        public static string GetSessionGuidFromCookie()
+        {
+            var protectedSessionGuid = AspNetCoreHttpContext.Current?.Request?.Cookies?[SessionGuidCookieName];
+            if (string.IsNullOrWhiteSpace(protectedSessionGuid)) return null;
+            var protector = GetSessionGuidProtector();
+            if (protector == null)
             {
-                SessionGuid = sessionGuid;
+                DeleteSessionGuidCookie();
+                return null;
             }
-            else
+            try
             {
-                SetSessionData("SessionGuid", SessionGuid);
+                return protector.Unprotect(protectedSessionGuid);
             }
+            catch (CryptographicException)
+            {
+                DeleteSessionGuidCookie();
+                return null;
+            }
+        }
+
+        public static void SetSessionGuidCookie(string sessionGuid)
+        {
+            if (string.IsNullOrWhiteSpace(sessionGuid)) return;
+            var httpContext = AspNetCoreHttpContext.Current;
+            if (httpContext?.Response == null) return;
+            if (httpContext.Response.HasStarted) return;
+            var protectedSessionGuid = ProtectSessionGuid(sessionGuid);
+            if (string.IsNullOrWhiteSpace(protectedSessionGuid)) return;
+            httpContext.Response.Cookies.Append(
+                SessionGuidCookieName,
+                protectedSessionGuid,
+                CreateSessionGuidCookieOptions(httpContext));
+        }
+
+        public static void DeleteSessionGuidCookie()
+        {
+            var httpContext = AspNetCoreHttpContext.Current;
+            if (httpContext?.Response == null) return;
+            if (httpContext.Response.HasStarted) return;
+            httpContext.Response.Cookies.Delete(
+                SessionGuidCookieName,
+                CreateSessionGuidCookieOptions(httpContext));
+        }
+
+        private static CookieOptions CreateSessionGuidCookieOptions(HttpContext httpContext)
+        {
+            return new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = Parameters.Security.SecureCookies
+                    || (httpContext?.Request?.IsHttps ?? false),
+                SameSite = SameSiteMode.Lax,
+                Path = httpContext?.Request.PathBase.HasValue == true
+                    ? httpContext.Request.PathBase.Value
+                    : "/"
+            };
+        }
+
+        private static IDataProtector GetSessionGuidProtector()
+        {
+            return AspNetCoreHttpContext.Current?.RequestServices
+                ?.GetService<IDataProtectionProvider>()
+                ?.CreateProtector(SessionGuidCookiePurpose);
+        }
+
+        private static string ProtectSessionGuid(string sessionGuid)
+        {
+            if (string.IsNullOrWhiteSpace(sessionGuid)) return null;
+            return GetSessionGuidProtector()?.Protect(sessionGuid);
         }
 
         public void SetItemProperties()
@@ -410,14 +496,14 @@ namespace Implem.Pleasanter.Libraries.Requests
                 if (setData) SetData();
                 var jsonDeserializedRequestApi = RequestDataString.Deserialize<Api>();
                 InvalidJsonData = AspNetCoreHttpContext.Current.Request.HasJsonContentType() && !RequestDataString.IsNullOrEmpty() && jsonDeserializedRequestApi is null;
-                SetApiVersion(api: jsonDeserializedRequestApi);
+                SetApiOptions(api: jsonDeserializedRequestApi);
                 if (jsonDeserializedRequestApi?.ApiKey.IsNullOrEmpty() == false)
                 {
                     ApiKey = jsonDeserializedRequestApi.ApiKey;
                     SetUser(userModel: GetUser(where: Rds.UsersWhere()
                         .ApiKey(ApiKey)));
                 }
-                else if (!LoginId.IsNullOrEmpty())
+                else if (LoginId.IsNullOrEmpty() == false && IsMcp == false)
                 {
                     var loginId = Strings.CoalesceEmpty(
                         Permissions.PrivilegedUsers(
@@ -443,7 +529,7 @@ namespace Implem.Pleasanter.Libraries.Requests
             }
         }
 
-        private void SetApiVersion(Api api)
+        private void SetApiOptions(Api api)
         {
 
             if (Parameters.Api.Compatibility_1_3_12)
@@ -457,6 +543,7 @@ namespace Implem.Pleasanter.Libraries.Requests
             {
                 ApiVersion = api?.ApiVersion ?? ApiVersion;
             }
+            ApiSsCache = api?.SsCache ?? false;
         }
 
         private UserModel GetUser(Rds.UsersWhereCollection where)
@@ -496,7 +583,12 @@ namespace Implem.Pleasanter.Libraries.Requests
                 Developer = userModel.Developer;
                 TimeZoneInfo = userModel.TimeZoneInfo;
                 UserSettings = userModel.UserSettings;
+                ApiAllowIpAddressRange = userModel.ApiAllowIpAddressRange;
                 HasPrivilege = Permissions.PrivilegedUsers(userModel.LoginId);
+                if (!Parameters.MultiTenant.IsProtectedTenant(TenantId) && !Parameters.AllowMultiTenants())
+                {
+                    Authenticated = false;
+                }
             }
         }
 
@@ -521,7 +613,8 @@ namespace Implem.Pleasanter.Libraries.Requests
                             .HtmlTitleRecord()
                             .TopStyle()
                             .TopScript()
-                            .Theme(),
+                            .Theme()
+                            .FirstDayOfWeek(),
                         where: Rds.TenantsWhere().TenantId(TenantId)))
                             .AsEnumerable()
                             .FirstOrDefault();
@@ -542,6 +635,7 @@ namespace Implem.Pleasanter.Libraries.Requests
                     TopStyle = dataRow.String("TopStyle");
                     TopScript = dataRow.String("TopScript");
                     TenantTheme = dataRow.String("Theme");
+                    TenantFirstDayOfWeek = dataRow.Int("FirstDayOfWeek");
                 }
             }
         }
@@ -744,7 +838,7 @@ namespace Implem.Pleasanter.Libraries.Requests
                         break;
 
                     case "publishbinaries":
-                        where = Guid.IsNullOrEmpty()? Rds.ItemsWhere().ReferenceId(value: Id)
+                        where = Guid.IsNullOrEmpty() ? Rds.ItemsWhere().ReferenceId(value: Id)
                             : Rds.ItemsWhere().ReferenceId(sub: Rds.SelectBinaries(
                                                         column: Rds.BinariesColumn().ReferenceId(),
                                                         where: Rds.BinariesWhere().Guid(Guid)));
@@ -832,15 +926,79 @@ namespace Implem.Pleasanter.Libraries.Requests
             Groups = PermissionUtilities.Groups(context: this);
         }
 
-        private void SetTenantCaches()
+        public void SetPermissionType(SiteSettings ss, Permissions.Types? type)
+        {
+            var cp = GetContextPermission(ss: ss);
+            cp.PermissionType = type;
+        }
+
+        public void SetPermissions(SiteSettings ss, long referenceId = 0)
+        {
+            var cp = new ContextPermission();
+            if (Publish)
+            {
+                cp.PermissionType = Permissions.Types.Read;
+                cp.ItemPermissionType = Permissions.Types.Read;
+            }
+            else if (Controller != "publishes")
+            {
+                if (PermissionHash?.ContainsKey(ss.InheritPermission) == true)
+                {
+                    cp.PermissionType = PermissionHash[ss.InheritPermission];
+                }
+                if (referenceId != 0 && PermissionHash?.ContainsKey(referenceId) == true)
+                {
+                    cp.ItemPermissionType = PermissionHash[referenceId];
+                }
+                if (ss.LockedTable())
+                {
+                    var lockedPermissionType = Permissions.Types.Read
+                        | Permissions.Types.Export
+                        | Permissions.Types.SendMail;
+                    cp.PermissionType &= lockedPermissionType;
+                    cp.ItemPermissionType &= lockedPermissionType;
+                }
+            }
+            ContextPermissions[$"{ss.SiteId}_{ss.ReferenceType}"] = cp;
+        }
+
+        public Permissions.Types GetPermissionType(SiteSettings ss, bool site = false)
+        {
+            var cp = GetContextPermission(ss: ss);
+            var permission = Permissions.Types.NotSet;
+            if (cp.PermissionType != null)
+            {
+                permission |= (Permissions.Types)cp.PermissionType;
+            }
+            if (cp.ItemPermissionType != null && !site)
+            {
+                permission |= (Permissions.Types)cp.ItemPermissionType;
+            }
+            return permission;
+        }
+
+        public ContextPermission GetContextPermission(SiteSettings ss)
+        {
+            var cp = ContextPermissions.Get($"{ss.SiteId}_{ss.ReferenceType}");
+            if (cp == null)
+            {
+                SetPermissions(
+                    ss: ss,
+                    referenceId: Id);
+                cp = ContextPermissions.Get($"{ss.SiteId}_{ss.ReferenceType}");
+            }
+            return cp;
+        }
+
+        public void SetTenantCaches()
         {
             if (TenantId != 0 && !SiteInfo.TenantCaches.ContainsKey(TenantId))
             {
                 try
                 {
-                    var temp = SiteInfo.TenantCaches.ToDictionary(o => o.Key, o => o.Value);
-                    temp.Add(TenantId, new TenantCache(context: this));
-                    SiteInfo.TenantCaches = temp;
+                    SiteInfo.TenantCaches.TryAdd(
+                        key: TenantId,
+                        value: new TenantCache(context: this));
                     SiteInfo.Refresh(context: this);
                 }
                 catch (Exception)
@@ -1182,6 +1340,7 @@ namespace Implem.Pleasanter.Libraries.Requests
 
         public void FormsAuthenticationSignIn(string userName, bool createPersistentCookie)
         {
+            RotateSessionGuid();
             var userClaims = new List<Claim> { new Claim(ClaimTypes.Name, userName) };
             var principal = new ClaimsPrincipal(new ClaimsIdentity(userClaims, "Forms"));
             var properties = new AuthenticationProperties() { IsPersistent = createPersistentCookie };
@@ -1202,6 +1361,7 @@ namespace Implem.Pleasanter.Libraries.Requests
             {
                 AspNetCoreHttpContext.Current.Session.Clear();
             }
+            DeleteSessionGuidCookie();
         }
 
         public void SessionAbandon()
@@ -1214,6 +1374,7 @@ namespace Implem.Pleasanter.Libraries.Requests
             {
                 AspNetCoreHttpContext.Current.Session.Clear();
             }
+            DeleteSessionGuidCookie();
         }
 
         public void FederatedAuthenticationSessionAuthenticationModuleDeleteSessionTokenCookie()
@@ -1285,19 +1446,113 @@ namespace Implem.Pleasanter.Libraries.Requests
 
         public string Token()
         {
-            return Request
-                ? AspNetCoreHttpContext.Current?.Request?.Cookies[".AspNetCore.Session"]?.Sha512Cng()
-                : string.Empty;
+            if (!Request)
+            {
+                return string.Empty;
+            }
+            var tokenSource =
+                GetSessionGuidFromCookie()
+                ?? AspNetCoreHttpContext.Current?.Request?.Cookies?[AspNetCoreSessionCookieName];
+            return tokenSource?.Sha512Cng();
         }
+
+        public void RotateSessionGuid()
+        {
+            if (!Request)
+            {
+                return;
+            }
+            var oldSessionGuid = SessionGuid;
+            if (string.IsNullOrWhiteSpace(oldSessionGuid))
+            {
+                return;
+            }
+            var newSessionGuid = Strings.NewGuid();
+            MoveSharedSessionData(
+                oldSessionGuid: oldSessionGuid,
+                newSessionGuid: newSessionGuid);
+            SessionGuid = newSessionGuid;
+            SetSessionGuidCookie(sessionGuid: SessionGuid);
+        }
+
+        private void MoveSharedSessionData(string oldSessionGuid, string newSessionGuid)
+        {
+            if (Parameters.Session.UseKeyValueStore)
+            {
+                RenameSessionGuidOnKeyValueStore(
+                    oldSessionGuid: oldSessionGuid,
+                    newSessionGuid: newSessionGuid);
+            }
+            RenameSessionGuidOnRds(
+                oldSessionGuid: oldSessionGuid,
+                newSessionGuid: newSessionGuid);
+        }
+
+        private static void RenameSessionGuidOnKeyValueStore(string oldSessionGuid, string newSessionGuid)
+        {
+            var connection = Implem.Pleasanter.Libraries.Redis.CacheForRedisConnection.Connection;
+            if (connection == null) return;
+            var iDatabase = connection.GetDatabase();
+            try
+            {
+                RenameRedisSessionKey(
+                    iDatabase: iDatabase,
+                    oldKey: oldSessionGuid,
+                    newKey: newSessionGuid);
+                RenameRedisSessionKey(
+                    iDatabase: iDatabase,
+                    oldKey: oldSessionGuid + "_readOnce",
+                    newKey: newSessionGuid + "_readOnce");
+            }
+            catch
+            {
+            }
+        }
+
+        private static void RenameRedisSessionKey(
+            StackExchange.Redis.IDatabase iDatabase,
+            string oldKey,
+            string newKey)
+        {
+            if (!iDatabase.KeyExists(oldKey))
+            {
+                return;
+            }
+            iDatabase.KeyRename(oldKey, newKey);
+            iDatabase.KeyExpire(newKey, TimeSpan.FromMinutes(Parameters.Session.RetentionPeriod));
+        }
+
+        private void RenameSessionGuidOnRds(string oldSessionGuid, string newSessionGuid)
+        {
+            Repository.ExecuteNonQuery(
+                context: this,
+                statements: Rds.UpdateSessions(
+                    where: Rds.SessionsWhere()
+                        .SessionGuid(oldSessionGuid),
+                    param: Rds.SessionsParam()
+                        .SessionGuid(newSessionGuid),
+                    addUpdatorParam: false));
+        }
+
+        private static readonly Lazy<HashSet<string>> ThemeChoices =
+            new Lazy<HashSet<string>>(() => Def.ColumnTable.Users_Theme.ChoicesText
+                .SplitReturn()
+                .Select(o => o.Split_1st())
+                .ToHashSet());
 
         public string Theme()
         {
-            var theme = Strings.CoalesceEmpty(
-                UserTheme,
-                TenantTheme,
-                Parameters.User.Theme,
-                "cerulean");
-            return theme;
+            return InterpretableTheme(UserTheme)
+                ?? InterpretableTheme(TenantTheme)
+                ?? InterpretableTheme(Parameters.User.Theme)
+                ?? "cerulean";
+        }
+
+        private static string InterpretableTheme(string theme)
+        {
+            return !theme.IsNullOrEmpty() && ThemeChoices.Value.Contains(theme)
+                ? theme
+                : null;
         }
 
         public decimal ThemeVersion()

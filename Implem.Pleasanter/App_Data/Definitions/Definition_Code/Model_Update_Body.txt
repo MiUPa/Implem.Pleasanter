@@ -42,6 +42,7 @@
         verUp: verUp));
 
 <!--Model_UpdateReminders-->
+<!--Model_WriteAttachmentsToLocal_Update-->
 <!--Model_UpdateExecute-->
 <!--Model_Update_ExecuteAutomaticNumberingExec-->
 <!--Model_UpdateExecute_User-->
@@ -66,6 +67,7 @@
 <!--Model_OnUpdated_ServerScript-->
 <!--Model_OnUpdated_SetStatusControls-->
 <!--Model_OnUpdated_BackgroundServerScript-->
+<!--Model_AiConnectSyncUpdate-->
 
     return new ErrorData(type: Error.Types.None);
 }

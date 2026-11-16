@@ -67,10 +67,20 @@ namespace Implem.Pleasanter.Libraries.Responses
                     return InvalidUpsertKey(
                         context: context,
                         errorData: errorData);
+                case General.Error.Types.PleaseInputData:
+                    return PleaseInputData(
+                        context: context,
+                        data: dataList.ToArray());
+                case General.Error.Types.LoginIdAlreadyUse:
+                    return LoginIdAlreadyUse(context: context);
                 case General.Error.Types.OverTenantQuota:
                     return OverTenantQuota(
                         context: context,
                         data: dataList.ToArray());
+                case General.Error.Types.PasswordPolicyViolation:
+                    return PasswordPolicyViolation(context: context);
+                case General.Error.Types.JoeAccountCheck:
+                    return JoeAccountCheck(context: context);
                 default:
                     var message = Displays.Get(context: context, id: errorData.Type.ToString());
                     if (dataList?.Any() == true) message = message.Params(dataList.ToArray());
@@ -88,6 +98,8 @@ namespace Implem.Pleasanter.Libraries.Responses
                 case General.Error.Types.InvalidJsonData:
                 case General.Error.Types.Overlap:
                 case General.Error.Types.InvalidUpsertKey:
+                case General.Error.Types.PleaseInputData:
+                case General.Error.Types.LoginIdAlreadyUse:
                     return 400;
                 case General.Error.Types.Unauthorized:
                     return 401;
@@ -112,6 +124,8 @@ namespace Implem.Pleasanter.Libraries.Responses
                     return 405;
                 case General.Error.Types.TooLongText:
                 case General.Error.Types.NotMatchRegex:
+                case General.Error.Types.PasswordPolicyViolation:
+                case General.Error.Types.JoeAccountCheck:
                     return 422;
             }
             return 500;
@@ -163,6 +177,24 @@ namespace Implem.Pleasanter.Libraries.Responses
                 id: context.Id,
                 statusCode: 400,
                 message: Displays.Overlap(context: context));
+        }
+
+        public static ApiResponse PleaseInputData(Context context, params string[] data)
+        {
+            return new ApiResponse(
+                id: context.Id,
+                statusCode: 400,
+                message: Displays.PleaseInputData(
+                    context: context,
+                    data: data));
+        }
+
+        public static ApiResponse LoginIdAlreadyUse(Context context)
+        {
+            return new ApiResponse(
+                id: context.Id,
+                statusCode: 400,
+                message: Displays.LoginIdAlreadyUse(context: context));
         }
 
         public static ApiResponse Forbidden(Context context)
@@ -251,6 +283,22 @@ namespace Implem.Pleasanter.Libraries.Responses
                 message: Displays.NotMatchRegex(
                     context: context,
                     data: errorData.Data));
+        }
+
+        private static ApiResponse PasswordPolicyViolation(Context context)
+        {
+            return new ApiResponse(
+                id: context.Id,
+                statusCode: 422,
+                message: Displays.PasswordPolicyViolation(context: context));
+        }
+
+        private static ApiResponse JoeAccountCheck(Context context)
+        {
+            return new ApiResponse(
+                id: context.Id,
+                statusCode: 422,
+                message: Displays.JoeAccountCheck(context: context));
         }
 
         public static ApiResponse OverTenantQuota(Context context, params string[] data)

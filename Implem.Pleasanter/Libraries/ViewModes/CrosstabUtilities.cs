@@ -216,11 +216,13 @@ namespace Implem.Pleasanter.Libraries.ViewModes
                         groupByX: groupByX,
                         view: view,
                         timePeriod: timePeriod,
-                        month: month),
+                        month: month,
+                        dataRows: dataRows),
                     choicesY: ChoicesY(
                         context: context,
                         groupByY: groupByY,
-                        view: view),
+                        view: view,
+                        dataRows: dataRows),
                     aggregateType: aggregateType,
                     value: value,
                     firstHeaderText: $"{groupByY.LabelText} | {groupByX.LabelText}",
@@ -243,7 +245,8 @@ namespace Implem.Pleasanter.Libraries.ViewModes
                         groupByX: groupByX,
                         view: view,
                         timePeriod: timePeriod,
-                        month: month),
+                        month: month,
+                        dataRows: dataRows),
                     choicesY: ChoicesY(columnList),
                     aggregateType: aggregateType,
                     value: value,
@@ -301,8 +304,12 @@ namespace Implem.Pleasanter.Libraries.ViewModes
             Column groupByX, Column groupByY, EnumerableRowCollection<DataRow> dataRows)
         {
             var data = dataRows.Select(dataRow => new CrosstabElement(
-                groupByX: dataRow.String(groupByX?.ColumnName ?? string.Empty),
-                groupByY: dataRow.String(groupByY?.ColumnName ?? string.Empty),
+                groupByX: NormalizeBlankKey(
+                    column: groupByX,
+                    value: dataRow.String(groupByX?.ColumnName ?? string.Empty)),
+                groupByY: NormalizeBlankKey(
+                    column: groupByY,
+                    value: dataRow.String(groupByY?.ColumnName ?? string.Empty)),
                 value: dataRow.Decimal("Value")));
             return ElementHash(data: data);
         }
@@ -314,10 +321,31 @@ namespace Implem.Pleasanter.Libraries.ViewModes
             dataRows.ForEach(dataRow =>
                 columnList.ForEach(column =>
                     data.Add(new CrosstabElement(
-                        groupByX: dataRow.String(groupByX?.ColumnName),
+                        groupByX: NormalizeBlankKey(
+                            column: groupByX,
+                            value: dataRow.String(groupByX?.ColumnName)),
                         groupByY: column?.ColumnName,
                         value: dataRow.Decimal(column?.ColumnName)))));
             return ElementHash(data: data);
+        }
+
+        private static string NormalizeBlankKey(Column column, string value)
+        {
+            if (column == null) return value;
+            switch (column.Type)
+            {
+                case Settings.Column.Types.User:
+                    return value.IsNullOrEmpty() || value == "0"
+                        ? SiteInfo.AnonymousId.ToString()
+                        : value;
+                case Settings.Column.Types.Dept:
+                case Settings.Column.Types.Group:
+                    return value == "0" && column.TypeName != "int"
+                        ? string.Empty
+                        : value;
+                default:
+                    return value;
+            }
         }
 
         public static Dictionary<string, CrosstabElement> ElementHash(IEnumerable<CrosstabElement> data)
@@ -348,6 +376,29 @@ namespace Implem.Pleasanter.Libraries.ViewModes
                     limit: Parameters.General.CrosstabXLimit);
         }
 
+        public static Dictionary<string, ControlData> ChoicesX(
+            Context context,
+            Column groupByX,
+            View view,
+            string timePeriod,
+            DateTime month,
+            EnumerableRowCollection<DataRow> dataRows)
+        {
+            var choices = ChoicesX(
+                context: context,
+                groupByX: groupByX,
+                view: view,
+                timePeriod: timePeriod,
+                month: month);
+            if (groupByX?.TypeName == "datetime") return choices;
+            return SupplementChoicesFromDataRows(
+                context: context,
+                column: groupByX,
+                choices: choices,
+                dataRows: dataRows,
+                limit: Parameters.General.CrosstabXLimit);
+        }
+
         private static Dictionary<string, ControlData> CorrectedChoices(
             Context context,Column groupBy, string timePeriod, DateTime date)
         {
@@ -367,7 +418,12 @@ namespace Implem.Pleasanter.Libraries.ViewModes
             for (var i = -11; i <= 0; i++)
             {
                 var day = date.AddYears(i);
-                hash.Add(day.ToString("yyyy"), new ControlData(day.ToString("yyyy")));
+                var from = new DateTime(day.Year, 1, 1);
+                hash.Add(day.ToString("yyyy"), new ControlData(day.ToString("yyyy"))
+                {
+                    From = from,
+                    To = from.AddYears(1).AddMilliseconds(-3)
+                });
             }
             return hash;
         }
@@ -378,9 +434,14 @@ namespace Implem.Pleasanter.Libraries.ViewModes
             for (var i = -11; i <= 0; i++)
             {
                 var day = date.AddMonths(i);
+                var from = new DateTime(day.Year, day.Month, 1);
                 hash.Add(day.ToString("yyyy/MM"),new ControlData(day.ToString(Displays.Get(
                     context: context,
-                    id: "YmFormat"))));
+                    id: "YmFormat")))
+                {
+                    From = from,
+                    To = from.AddMonths(1).AddMilliseconds(-3)
+                });
             }
             return hash;
         }
@@ -398,7 +459,11 @@ namespace Implem.Pleasanter.Libraries.ViewModes
                 var key = day.Year * 100 + ((day.DayOfYear + append) / 7) + 1;
                 hash.Add(key.ToString(), new ControlData(day.ToString(Displays.Get(
                     context: context,
-                    id: "MdFormat"))));
+                    id: "MdFormat")))
+                {
+                    From = day.Date,
+                    To = day.Date.AddDays(7).AddMilliseconds(-3)
+                });
             }
             return hash;
         }
@@ -409,7 +474,11 @@ namespace Implem.Pleasanter.Libraries.ViewModes
             var month = date.Month;
             while (month == date.Month)
             {
-                hash.Add(date.ToString("yyyy/MM/dd"), new ControlData(date.ToString("dd")));
+                hash.Add(date.ToString("yyyy/MM/dd"), new ControlData(date.ToString("dd"))
+                {
+                    From = date.Date,
+                    To = date.Date.AddDays(1).AddMilliseconds(-3)
+                });
                 date = date.AddDays(1);
             }
             return hash;
@@ -424,6 +493,99 @@ namespace Implem.Pleasanter.Libraries.ViewModes
                 checkBlankInSelection: true,
                 view: view,
                 limit: Parameters.General.CrosstabYLimit);
+        }
+
+        public static Dictionary<string, ControlData> ChoicesY(
+            Context context,
+            Column groupByY,
+            View view,
+            EnumerableRowCollection<DataRow> dataRows)
+        {
+            var choices = ChoicesY(
+                context: context,
+                groupByY: groupByY,
+                view: view);
+            return SupplementChoicesFromDataRows(
+                context: context,
+                column: groupByY,
+                choices: choices,
+                dataRows: dataRows,
+                limit: Parameters.General.CrosstabYLimit);
+        }
+
+        private static Dictionary<string, ControlData> SupplementChoicesFromDataRows(
+            Context context,
+            Column column,
+            Dictionary<string, ControlData> choices,
+            EnumerableRowCollection<DataRow> dataRows,
+            int limit)
+        {
+            if (column == null
+                || dataRows == null
+                || choices == null) return choices;
+            var label = DisabledEntityLabel(context: context, type: column.Type);
+            if (label == null) return choices;
+            if (choices.Count >= limit) return choices;
+            var supplemented = new Dictionary<string, ControlData>(choices);
+            dataRows
+                .Select(o => NormalizeBlankKey(
+                    column: column,
+                    value: o.String(column.ColumnName)))
+                .Distinct()
+                .Where(v => !v.IsNullOrEmpty() && v != "0")
+                .Where(v => v != SiteInfo.AnonymousId.ToString())
+                .Where(v => !supplemented.ContainsKey(v))
+                .Take(limit - supplemented.Count)
+                .ForEach(v => supplemented.Add(
+                    v,
+                    new ControlData(SupplementChoiceText(
+                        context: context,
+                        type: column.Type,
+                        value: v,
+                        fallbackLabel: label))));
+            return supplemented;
+        }
+
+        private static string SupplementChoiceText(
+            Context context, Column.Types type, string value, string fallbackLabel)
+        {
+            var id = value.ToInt();
+            if (id == 0) return fallbackLabel;
+            switch (type)
+            {
+                case Settings.Column.Types.User:
+                    var user = SiteInfo.User(context: context, userId: id);
+                    return user != null && user.Id == id && !user.Name.IsNullOrEmpty()
+                        ? user.Name
+                        : fallbackLabel;
+                case Settings.Column.Types.Dept:
+                    var dept = SiteInfo.Dept(tenantId: context.TenantId, deptId: id);
+                    return dept != null && dept.Id == id && !dept.Name.IsNullOrEmpty()
+                        ? dept.Name
+                        : fallbackLabel;
+                case Settings.Column.Types.Group:
+                    var group = SiteInfo.Group(tenantId: context.TenantId, groupId: id);
+                    return group != null && group.Id == id && !group.Name.IsNullOrEmpty()
+                        ? group.Name
+                        : fallbackLabel;
+                default:
+                    return fallbackLabel;
+            }
+        }
+
+        private static string DisabledEntityLabel(Context context, Column.Types type)
+        {
+            switch (type)
+            {
+                case Settings.Column.Types.User:
+                    return Displays.DisabledUser(context: context);
+                case Settings.Column.Types.Dept:
+                    return Displays.DisabledDept(context: context);
+                case Settings.Column.Types.Group:
+                    return Displays.DisabledGroup(context: context);
+                default:
+                    return null;
+            }
         }
 
         public static Dictionary<string, ControlData> ChoicesY(List<Column> columnList)

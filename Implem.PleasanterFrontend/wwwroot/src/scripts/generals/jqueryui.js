@@ -1,4 +1,4 @@
-﻿$(function () {
+$(function () {
     $p.apply();
 });
 $p.apply = function () {
@@ -12,6 +12,12 @@ $p.apply = function () {
             beforeActivate: function (event, ui) {
                 if (ui.newPanel.attr('data-action')) {
                     $p.send(ui.newPanel);
+                }
+            },
+            //最初から開いているタブは切り替えが発生しないため、ここで内容を取得する。
+            create: function (event, ui) {
+                if (ui.panel.attr('data-action')) {
+                    $p.send(ui.panel);
                 }
             },
             active: $('#EditorTabsContainer').attr('tab-active'),
@@ -197,10 +203,14 @@ function replaceMenu() {
     $header = $("body > thead:visible > tr > th.sortable[data-name='" + dataName + "']");
     if ($header.length) {
         if ($('.menu-sort:visible').length) {
+            $('.menu-sort:visible')
+                .find('select[multiple].applied')
+                .each(function () {
+                    if ($(this).multiselect('isOpen')) {
+                        $(this).multiselect('close');
+                    }
+                });
             $('.menu-sort:visible').hide();
-        }
-        if ($('.ui-multiselect-close:visible').length) {
-            $('.ui-multiselect-close:visible').click();
         }
     } else {
         $header = $("table > thead > tr > th.sortable[data-name='" + dataName + "']");
@@ -213,9 +223,9 @@ function replaceMenu() {
             .css('top', $header.offset().top + $header.outerHeight())
             .css('left', $header.offset().left)
             .outerWidth(
-                $header.outerWidth() > $menuSort.outerWidth()
+                $header.outerWidth() > $p.store.$menuSort.outerWidth()
                     ? $header.outerWidth()
-                    : $menuSort.outerWidth()
+                    : $p.store.$menuSort.outerWidth()
             );
     }
     var $multiSelect = $('.ui-multiselect-menu:visible');
@@ -272,6 +282,7 @@ const SimpleMode = (function () {
         Move: '#MoveSettingsEditor',
         Summaries: '#SummariesSettingsEditor',
         Formulas: '#FormulasSettingsEditor',
+        AiProviders: '#AiProvidersSettingsEditor',
         Processes: '#ProcessesSettingsEditor',
         StatusControls: '#StatusControlsSettingsEditor',
         Reminders: '#RemindersSettingsEditor',

@@ -6,7 +6,10 @@ RUN npm ci
 RUN npm audit --audit-level high || true
 # Copy all necessary files for frontend build
 COPY Implem.PleasanterFrontend/wwwroot/ ./
-RUN npx --no-install tsc && npx --no-install vite build --outDir=/app/dist/assets
+# フロントエンドビルド (package.json の build スクリプトに一元化)。
+# vite の outputDir (../../Implem.Pleasanter/wwwroot/assets) により、
+# 成果物は WORKDIR(/app) 基準で /Implem.Pleasanter/wwwroot 配下に出力される (後段 COPY 元)。
+RUN npm run build
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
@@ -21,6 +24,7 @@ COPY Implem.Factory/Implem.Factory.csproj Implem.Factory/
 COPY Rds/Implem.PostgreSql/Implem.PostgreSql.csproj Rds/Implem.PostgreSql/
 COPY Rds/Implem.SqlServer/Implem.SqlServer.csproj Rds/Implem.SqlServer/
 COPY Rds/Implem.MySql/Implem.MySql.csproj Rds/Implem.MySql/
+COPY Implem.PleasanterFrontend/Implem.PleasanterFrontend.csproj Implem.PleasanterFrontend/
 RUN dotnet restore "Implem.Pleasanter/Implem.Pleasanter.csproj"
 COPY . .
 WORKDIR "/src/Implem.Pleasanter"
@@ -55,10 +59,10 @@ EXPOSE 8080
 
 FROM base AS testing
 COPY --from=settings /app/publish .
-COPY --from=frontend-build /app/dist /Implem.Pleasanter/wwwroot wwwroot/
+COPY --from=frontend-build /Implem.Pleasanter/wwwroot wwwroot/
 ENTRYPOINT ["dotnet", "Implem.Pleasanter.dll"]
 
 FROM base AS final
 COPY --from=publish /app/publish .
-COPY --from=frontend-build /app/dist /Implem.Pleasanter/wwwroot wwwroot/
+COPY --from=frontend-build /Implem.Pleasanter/wwwroot wwwroot/
 ENTRYPOINT ["dotnet", "Implem.Pleasanter.dll"]

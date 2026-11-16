@@ -15,6 +15,7 @@ using Implem.Pleasanter.Libraries.Security;
 using Implem.Pleasanter.Libraries.Server;
 using Implem.Pleasanter.Libraries.ServerScripts;
 using Implem.Pleasanter.Libraries.Settings;
+using MailProvider = Implem.ParameterAccessor.Parts.MailProvider;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -853,11 +854,17 @@ namespace Implem.Pleasanter.Models
             }
             ReferenceId = referenceId;
             ReferenceVer = context.Forms.Int("Ver");
-            From = OutgoingMailUtilities.From(
+            var mailAddress = MailAddressUtilities.Get(
                 context: context,
                 userId: context.UserId);
+            From = mailAddress != string.Empty
+                ? MimeKit.MailboxAddress.Parse(
+                    MailAddressUtilities.Get(
+                        fullName: context.User?.Name,
+                        mailAddress: mailAddress))
+                : Libraries.Mails.Addresses.SupportFrom();
             SetByForm(context: context);
-            if (Libraries.Mails.Addresses.FixedFrom(From))
+            if (From != null && Libraries.Mails.Addresses.FixedFrom(From))
             {
                 Body += "\n\n{0}<{1}>".Params(From.Name, From.Address);
             }
@@ -944,10 +951,15 @@ namespace Implem.Pleasanter.Models
             if (errorData.Type.Has()) return errorData;
             Host = Parameters.Mail.SmtpHost;
             Port = Parameters.Mail.SmtpPort;
-            switch (Host)
+            switch (Parameters.Mail.Provider)
             {
-                case "smtp.sendgrid.net":
+                case MailProvider.SendGrid:
                     SendBySendGrid(
+                        context: context,
+                        attachments: attachments);
+                    break;
+                case MailProvider.AwsSes:
+                    SendByAwsSes(
                         context: context,
                         attachments: attachments);
                     break;
@@ -994,7 +1006,24 @@ namespace Implem.Pleasanter.Models
         {
             _ = new SendGridMail(
                 context: context,
-                host: Host,
+                from: From,
+                to: To,
+                cc: Cc,
+                bcc: Bcc,
+                subject: Title.Value,
+                body: Body)
+                    .SendAsync(
+                        context: context,
+                        attachments: attachments);
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private void SendByAwsSes(Context context, Attachments attachments = null)
+        {
+            _ = new AwsSesMail(
+                context: context,
                 from: From,
                 to: To,
                 cc: Cc,

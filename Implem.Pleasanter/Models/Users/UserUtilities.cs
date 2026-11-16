@@ -309,6 +309,20 @@ namespace Implem.Pleasanter.Models
                     .Log(context.GetLog())
                     .ToJson();
             }
+            catch (Implem.Libraries.Exceptions.GridDataTimeoutException)
+            {
+                return new ResponseCollection(context: context)
+                    .Message(context.Messages.Last())
+                    .Log(context.GetLog())
+                    .ToJson();
+            }
+            catch (Implem.Libraries.Exceptions.GridDataException)
+            {
+                return new ResponseCollection(context: context)
+                    .Message(context.Messages.Last())
+                    .Log(context.GetLog())
+                    .ToJson();
+            }
             var columns = ss.GetGridColumns(
                 context: context,
                 view: view,
@@ -1647,8 +1661,23 @@ namespace Implem.Pleasanter.Models
                                     userModel: userModel)
                                 .FieldSet(
                                     attributes: new HtmlAttributes()
+                                        .Id("FieldSetPermissionsViewer")
+                                        .DataAction("PermissionsViewer")
+                                        .DataMethod("post"),
+                                    _using: userModel.MethodType != BaseModel.MethodTypes.New
+                                        && HtmlPermissionsViewer.Readable(
+                                            context: context,
+                                            tableName: "Users"))
+                                .FieldSet(
+                                    attributes: new HtmlAttributes()
                                         .Id("FieldSetHistories")
                                         .DataAction("Histories")
+                                        .DataMethod("post"),
+                                    _using: userModel.MethodType != BaseModel.MethodTypes.New)
+                                .FieldSet(
+                                    attributes: new HtmlAttributes()
+                                        .Id("FieldSetHistoryDiff")
+                                        .DataAction("HistoryDiff")
                                         .DataMethod("post"),
                                     _using: userModel.MethodType != BaseModel.MethodTypes.New)
                                 .MainCommands(
@@ -1668,6 +1697,10 @@ namespace Implem.Pleasanter.Models
                             value: Locations.BaseUrl(context: context))
                         .Hidden(
                             controlId: "Ver",
+                            value: userModel.Ver.ToString())
+                        .Hidden(
+                            controlId: "HistoryDiffBaseVer",
+                            css: "control-hidden always-send",
                             value: userModel.Ver.ToString())
                         .Hidden(
                             controlId: "MethodType",
@@ -1719,11 +1752,26 @@ namespace Implem.Pleasanter.Models
                             ? false
                             : userModel.MethodType != BaseModel.MethodTypes.New))
                 .Li(
+                    _using: userModel.MethodType != BaseModel.MethodTypes.New
+                        && HtmlPermissionsViewer.Readable(
+                            context: context,
+                            tableName: "Users"),
+                    action: () => hb
+                        .A(
+                            href: "#FieldSetPermissionsViewer",
+                            text: Displays.PermissionsViewer(context: context)))
+                .Li(
                     _using: userModel.MethodType != BaseModel.MethodTypes.New,
                     action: () => hb
                         .A(
                             href: "#FieldSetHistories",
-                            text: Displays.ChangeHistoryList(context: context))));
+                            text: Displays.ChangeHistoryList(context: context)))
+                .Li(
+                    _using: userModel.MethodType != BaseModel.MethodTypes.New,
+                    action: () => hb
+                        .A(
+                            href: "#FieldSetHistoryDiff",
+                            text: Displays.HistoryDiff(context: context))));
         }
 
         private static HtmlBuilder FieldSetGeneral(
@@ -2586,6 +2634,60 @@ namespace Implem.Pleasanter.Models
                                     value: userModel.LoginExpirationPeriod.ToResponse(context: context, ss: ss, column: column),
                                     options: column.ResponseValOptions(serverScriptModelColumn: serverScriptModelColumn));
                                 break;
+                            case "ScimId":
+                                res.Val(
+                                    target: "#Users_ScimId" + idSuffix,
+                                    value: userModel.ScimId.ToResponse(context: context, ss: ss, column: column),
+                                    options: column.ResponseValOptions(serverScriptModelColumn: serverScriptModelColumn));
+                                break;
+                            case "ScimExternalId":
+                                res.Val(
+                                    target: "#Users_ScimExternalId" + idSuffix,
+                                    value: userModel.ScimExternalId.ToResponse(context: context, ss: ss, column: column),
+                                    options: column.ResponseValOptions(serverScriptModelColumn: serverScriptModelColumn));
+                                break;
+                            case "ScimSync":
+                                res.Val(
+                                    target: "#Users_ScimSync" + idSuffix,
+                                    value: userModel.ScimSync,
+                                    options: column.ResponseValOptions(serverScriptModelColumn: serverScriptModelColumn));
+                                break;
+                            case "UiType":
+                                res.Val(
+                                    target: "#Users_UiType" + idSuffix,
+                                    value: userModel.UiType.ToResponse(context: context, ss: ss, column: column),
+                                    options: column.ResponseValOptions(serverScriptModelColumn: serverScriptModelColumn));
+                                break;
+                            case "UiColorScheme":
+                                res.Val(
+                                    target: "#Users_UiColorScheme" + idSuffix,
+                                    value: userModel.UiColorScheme.ToResponse(context: context, ss: ss, column: column),
+                                    options: column.ResponseValOptions(serverScriptModelColumn: serverScriptModelColumn));
+                                break;
+                            case "UiMainColor":
+                                res.Val(
+                                    target: "#Users_UiMainColor" + idSuffix,
+                                    value: userModel.UiMainColor.ToResponse(context: context, ss: ss, column: column),
+                                    options: column.ResponseValOptions(serverScriptModelColumn: serverScriptModelColumn));
+                                break;
+                            case "UiSubColor":
+                                res.Val(
+                                    target: "#Users_UiSubColor" + idSuffix,
+                                    value: userModel.UiSubColor.ToResponse(context: context, ss: ss, column: column),
+                                    options: column.ResponseValOptions(serverScriptModelColumn: serverScriptModelColumn));
+                                break;
+                            case "UiBackgroundColor":
+                                res.Val(
+                                    target: "#Users_UiBackgroundColor" + idSuffix,
+                                    value: userModel.UiBackgroundColor.ToResponse(context: context, ss: ss, column: column),
+                                    options: column.ResponseValOptions(serverScriptModelColumn: serverScriptModelColumn));
+                                break;
+                            case "ApiAllowIpAddressRange":
+                                res.Val(
+                                    target: "#Users_ApiAllowIpAddressRange" + idSuffix,
+                                    value: userModel.ApiAllowIpAddressRange.ToResponse(context: context, ss: ss, column: column),
+                                    options: column.ResponseValOptions(serverScriptModelColumn: serverScriptModelColumn));
+                                break;
                             default:
                                 switch (Def.ExtendedColumnTypes.Get(column?.Name ?? string.Empty))
                                 {
@@ -2906,6 +3008,148 @@ namespace Implem.Pleasanter.Models
             }
         }
 
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        public static bool CreateByServerScript(
+            Context context,
+            SiteSettings ss,
+            int userId)
+        {
+            var userApiModel = context.RequestDataString.Deserialize<UserApiModel>();
+            if (userApiModel == null)
+            {
+                context.InvalidJsonData = !context.RequestDataString.IsNullOrEmpty();
+            }
+            var userModel = new UserModel(
+                context: context,
+                ss: ss,
+                userId: userId,
+                userApiModel: userApiModel);
+            var invalid = UserValidators.OnCreating(
+                context: context,
+                ss: ss,
+                userModel: userModel,
+                api: true,
+                serverScript: true);
+            switch (invalid.Type)
+            {
+                case Error.Types.None: break;
+                default:
+                    return false;
+            }
+            userModel.VerUp = Versions.MustVerUp(
+                context: context,
+                ss: ss,
+                baseModel: userModel);
+            var errorData = userModel.Create(
+                context: context,
+                ss: ss);
+            switch (errorData.Type)
+            {
+                case Error.Types.None:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        public static bool UpdateByServerScript(
+            Context context,
+            SiteSettings ss,
+            int userId)
+        {
+            var userApiModel = context.RequestDataString.Deserialize<UserApiModel>();
+            if (userApiModel == null)
+            {
+                context.InvalidJsonData = !context.RequestDataString.IsNullOrEmpty();
+            }
+            var userModel = new UserModel(
+                context: context,
+                ss: ss,
+                userId: userId,
+                userApiModel: userApiModel);
+            if (userModel.AccessStatus != Databases.AccessStatuses.Selected)
+            {
+                return false;
+            }
+            var invalid = UserValidators.OnUpdating(
+                context: context,
+                ss: ss,
+                userModel: userModel,
+                api: true,
+                serverScript: true);
+            switch (invalid.Type)
+            {
+                case Error.Types.None: break;
+                default:
+                    return false;
+            }
+            userModel.VerUp = Versions.MustVerUp(
+                context: context,
+                ss: ss,
+                baseModel: userModel);
+            var errorData = userModel.Update(
+                context: context,
+                ss: ss);
+            switch (errorData.Type)
+            {
+                case Error.Types.None:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        public static List<User> GetListByServerScript(
+            Context context,
+            SiteSettings ss,
+            string view,
+            int offset,
+            int pageSize)
+        {
+            var apiView = view.Deserialize<View>() ?? new View();
+            var maxPageSize = pageSize > 0 && pageSize <= Parameters.Api.PageSize
+                ? pageSize
+                : Parameters.Api.PageSize;
+            var minOffset = offset > 0
+                ? offset
+                : 0;
+            var dataTable = Repository.ExecuteTable(
+                context: context,
+                statements: Rds.SelectUsers(
+                    column: User.QueryColumnWithExtras(),
+                    join: Rds.UsersJoinDefault(),
+                    where: apiView.Where(
+                        context: context,
+                        ss: ss)
+                            .Users_TenantId(context.TenantId)
+                            .SqlWhereLike(
+                                tableName: "\"Users\"",
+                                name: "SearchText",
+                                searchText: apiView.ColumnFilterHash
+                                    ?.Where(f => f.Key == "SearchText")
+                                    ?.Select(f => f.Value)
+                                    ?.FirstOrDefault(),
+                                clauseCollection: SearchTextClauses(context: context)),
+                    orderBy: apiView.OrderBy(
+                        context: context,
+                        ss: ss),
+                    offset: minOffset,
+                    pageSize: maxPageSize));
+            return dataTable.AsEnumerable()
+                .Select(dataRow => new User(
+                    context: context,
+                    dataRow: dataRow))
+                .ToList();
+        }
+
         public static string Delete(Context context, SiteSettings ss, int userId)
         {
             var userModel = new UserModel(context, ss, userId);
@@ -2937,6 +3181,55 @@ namespace Implem.Pleasanter.Models
                 default:
                     return errorData.MessageJson(context: context);
             }
+        }
+
+        public static string PermissionsViewer(
+            Context context, SiteSettings ss, int userId)
+        {
+            var userModel = new UserModel(context: context, ss: ss, userId: userId);
+            if (!context.CanRead(ss: ss))
+            {
+                return Error.Types.HasNotPermission.MessageJson(context: context);
+            }
+            if (!HtmlPermissionsViewer.Readable(context: context, tableName: "Users"))
+            {
+                return Error.Types.HasNotPermission.MessageJson(context: context);
+            }
+            if (userModel.AccessStatus != Databases.AccessStatuses.Selected)
+            {
+                return Error.Types.NotFound.MessageJson(context: context);
+            }
+            return HtmlPermissionsViewer.PermissionsViewer(
+                context: context,
+                res: new UsersResponseCollection(
+                    context: context,
+                    userModel: userModel),
+                tableName: "Users",
+                id: userId)
+                    .Messages(context.Messages)
+                    .ToJson();
+        }
+
+        public static ResponseFile PermissionsViewerCsv(
+            Context context, SiteSettings ss, int userId)
+        {
+            var userModel = new UserModel(context: context, ss: ss, userId: userId);
+            if (!context.CanRead(ss: ss))
+            {
+                return null;
+            }
+            if (!HtmlPermissionsViewer.Readable(context: context, tableName: "Users"))
+            {
+                return null;
+            }
+            if (userModel.AccessStatus != Databases.AccessStatuses.Selected)
+            {
+                return null;
+            }
+            return HtmlPermissionsViewer.PermissionsViewerCsv(
+                context: context,
+                tableName: "Users",
+                id: userId);
         }
 
         public static string Histories(
@@ -3061,6 +3354,74 @@ namespace Implem.Pleasanter.Models
                                 : string.Empty)
                     }))
                 .ToJson();
+        }
+
+        public static string HistoryDiff(Context context, SiteSettings ss, int userId)
+        {
+            if (!context.CanRead(ss: ss))
+            {
+                return Error.Types.HasNotPermission.MessageJson(context: context);
+            }
+            return HistoryDiffUtilities.HistoryDiff(
+                context: context,
+                ss: ss,
+                versions: new UserCollection(
+                    context: context,
+                    ss: ss,
+                    column: Rds.UsersColumn()
+                        .UserId()
+                        .Ver()
+                        .Updator()
+                        .UpdatedTime(),
+                    where: HistoryDiffWhere(
+                        context: context,
+                        userId: userId),
+                    orderBy: Rds.UsersOrderBy().Ver(SqlOrderBy.Types.desc),
+                    tableType: Sqls.TableTypes.NormalAndHistory)
+                        .ToList(),
+                getModel: ver => HistoryDiffUserModel(
+                    context: context,
+                    ss: ss,
+                    userId: userId,
+                    ver: ver),
+                toDisplay: (userModel, column, mine) => userModel.ToDisplay(
+                    context: context,
+                    ss: ss,
+                    column: column,
+                    mine: mine));
+        }
+
+
+        private static SqlWhereCollection HistoryDiffWhere(
+            Context context,
+            int userId,
+            int? ver = null)
+        {
+            return Rds.UsersWhere()
+                .TenantId(context.TenantId)
+                .UserId(userId)
+                .Ver(value: ver, _using: ver.HasValue);
+        }
+
+        private static UserModel HistoryDiffUserModel(
+            Context context,
+            SiteSettings ss,
+            int userId,
+            int ver)
+        {
+            var userModel = new UserModel(
+                context: context,
+                ss: ss,
+                userId: userId);
+            userModel.Get(
+                context: context,
+                ss: ss,
+                where: HistoryDiffWhere(
+                    context: context,
+                    userId: userId,
+                    ver: ver),
+                tableType: Sqls.TableTypes.NormalAndHistory);
+            return userModel;
         }
 
         /// <summary>
@@ -3987,6 +4348,7 @@ namespace Implem.Pleasanter.Models
                     new HtmlBuilder().ChangePasswordDialog(
                         context: context,
                         ss: ss))
+                .Invoke("setGeneratePasswordButton")
                 .ToJson();
         }
 
@@ -4399,9 +4761,6 @@ namespace Implem.Pleasanter.Models
                 referenceType: "Users",
                 title: string.Empty,
                 action: () => hb
-                    .Div(id: "PortalLink", action: () => hb
-                        .A(href: Parameters.General.HtmlPortalUrl, action: () => hb
-                            .Text(Displays.Portal(context: context))))
                     .Form(
                         attributes: new HtmlAttributes()
                             .Id("MainForm")
@@ -4544,7 +4903,7 @@ namespace Implem.Pleasanter.Models
                                     "demos",
                                     "_action_"
                                 })),
-                        _using: Parameters.Service.Demo && !Parameters.Service.DemoApi,
+                        _using: Parameters.Environment() == 2 && (Parameters.Service.Demo && !Parameters.Service.DemoApi),
                         action: () => hb
                             .Div(id: "Demo", action: () => hb
                                 .FieldSet(
@@ -4762,34 +5121,60 @@ namespace Implem.Pleasanter.Models
                                 text: Displays.General(context: context))))
                     .TabsPanelField(
                         id: "FieldSetGeneral",
-                        action: () => hb.FieldText(
-                            controlId: "ApiKey",
-                            fieldCss: "field-wide",
-                            labelText: Displays.ApiKey(context: context),
-                            text: userModel.ApiKey))
-                .Div(
-                        id: "ApiEditorCommands",
                         action: () => hb
-                            .Button(
-                                controlId: "CreateApiKey",
-                                controlCss: "button-icon button-positive",
-                                text: userModel.ApiKey.IsNullOrEmpty()
-                                    ? Displays.Create(context: context)
-                                    : Displays.ReCreate(context: context),
-                                onClick: "$p.send($(this));",
-                                icon: "ui-icon-disk",
-                                action: "CreateApiKey",
-                                method: "post")
-                            .Button(
-                                controlId: "DeleteApiKey",
-                                controlCss: "button-icon button-negative",
-                                text: Displays.Delete(context: context),
-                                onClick: "$p.send($(this));",
-                                icon: "ui-icon-trash",
-                                action: "DeleteApiKey",
-                                method: "post",
-                                confirm: "ConfirmDelete",
-                                _using: !userModel.ApiKey.IsNullOrEmpty())));
+                            .FieldSet(
+                                id: "ApiKeySettings",
+                                css: " enclosed no-field-label",
+                                legendText: Displays.ApiKey(context: context),
+                                action: () => hb
+                                    .FieldText(
+                                        controlId: "ApiKey",
+                                        fieldCss: "field-wide",
+                                        labelText: string.Empty,
+                                        text: userModel.ApiKey)
+                                    .Div(css: "command-left", action: () => hb
+                                        .Button(
+                                            controlId: "CreateApiKey",
+                                            controlCss: "button-icon button-positive",
+                                            text: userModel.ApiKey.IsNullOrEmpty()
+                                                ? Displays.Create(context: context)
+                                                : Displays.ReCreate(context: context),
+                                            onClick: "$p.send($(this));",
+                                            icon: "ui-icon-disk",
+                                            action: "CreateApiKey",
+                                            method: "post")
+                                        .Button(
+                                            controlId: "DeleteApiKey",
+                                            controlCss: "button-icon button-negative",
+                                            text: Displays.Delete(context: context),
+                                            onClick: "$p.send($(this));",
+                                            icon: "ui-icon-trash",
+                                            action: "DeleteApiKey",
+                                            method: "post",
+                                            confirm: "ConfirmDelete",
+                                            _using: !userModel.ApiKey.IsNullOrEmpty())))
+                            .FieldSet(
+                                id: "ApiAllowIpAddressRangeSettings",
+                                css: " enclosed no-field-label",
+                                legendText: Displays.Users_ApiAllowIpAddressRange(context: context),
+                                action: () => hb
+                                    .FieldTextBox(
+                                        textType: HtmlTypes.TextTypes.MultiLine,
+                                        fieldId: "Users_ApiAllowIpAddressRangeField",
+                                        controlId: "Users_ApiAllowIpAddressRange",
+                                        fieldCss: "field-wide",
+                                        labelText: string.Empty,
+                                        placeholder: "192.168.0.0/24",
+                                        text: userModel.ApiAllowIpAddressRange.ToStr())
+                                    .Div(css: "command-left", action: () => hb
+                                        .Button(
+                                            controlId: "UpdateApiAllowIpAddressRange",
+                                            controlCss: "button-icon button-positive",
+                                            text: Displays.Update(context: context),
+                                            onClick: "$p.send($(this));",
+                                            icon: "ui-icon-disk",
+                                            action: "UpdateApiAllowIpAddressRange",
+                                            method: "post")))));
         }
 
         /// <summary>
@@ -4854,6 +5239,47 @@ namespace Implem.Pleasanter.Models
                     .Message(Messages.ApiKeyDeleted(context: context))
                     .ToJson();
             }
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        public static string UpdateApiAllowIpAddressRange(Context context, SiteSettings ss)
+        {
+            var userModel = new UserModel(context: context, ss: ss, userId: context.UserId);
+            var invalid = UserValidators.OnApiEditing(
+                context: context,
+                userModel: userModel);
+            switch (invalid.Type)
+            {
+                case Error.Types.None: break;
+                default: return HtmlTemplates.Error(context, invalid);
+            }
+            var apiAllowIpAddressRange = context.Forms.Data("Users_ApiAllowIpAddressRange");
+            var invalidRanges = ApiKeyIpRestrictions.InvalidIpAddressRanges(
+                value: apiAllowIpAddressRange);
+            if (invalidRanges.Any())
+            {
+                return new ResponseCollection(context: context)
+                    .Message(Messages.InvalidApiAllowIpAddressRange(
+                        context: context,
+                        data: invalidRanges.Join()))
+                    .ToJson();
+            }
+            userModel.ApiAllowIpAddressRange = apiAllowIpAddressRange;
+            var error = userModel.Update(
+                context: context,
+                ss: ss,
+                updateMailAddresses: false);
+            if (error.Type.Has())
+            {
+                return error.MessageJson(context: context);
+            }
+            return new ResponseCollection(context: context)
+                .Message(Messages.Updated(
+                    context: context,
+                    data: Displays.ApiSettings(context: context)))
+                .ToJson();
         }
 
         /// <summary>
@@ -4966,16 +5392,7 @@ namespace Implem.Pleasanter.Models
                                         ?.Where(f => f.Key == "SearchText")
                                         ?.Select(f => f.Value)
                                         ?.FirstOrDefault(),
-                                    clauseCollection: new List<string>()
-                                    {
-                                        Rds.Users_LoginId_WhereLike(factory: context),
-                                        Rds.Users_Name_WhereLike(factory: context),
-                                        Rds.Users_UserCode_WhereLike(factory: context),
-                                        Rds.Users_Body_WhereLike(factory: context),
-                                        Rds.Depts_DeptCode_WhereLike(factory: context),
-                                        Rds.Depts_DeptName_WhereLike(factory: context),
-                                        Rds.Depts_Body_WhereLike(factory: context)
-                                    }),
+                                    clauseCollection: SearchTextClauses(context: context)),
                         orderBy: view.OrderBy(
                             context: context,
                             ss: ss),
@@ -5000,6 +5417,23 @@ namespace Implem.Pleasanter.Models
                         }
                     }.ToJson());
             }
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        private static List<string> SearchTextClauses(Context context)
+        {
+            return new List<string>()
+            {
+                Rds.Users_LoginId_WhereLike(factory: context),
+                Rds.Users_Name_WhereLike(factory: context),
+                Rds.Users_UserCode_WhereLike(factory: context),
+                Rds.Users_Body_WhereLike(factory: context),
+                Rds.Depts_DeptCode_WhereLike(factory: context),
+                Rds.Depts_DeptName_WhereLike(factory: context),
+                Rds.Depts_Body_WhereLike(factory: context)
+            };
         }
 
         /// <summary>
@@ -5071,7 +5505,6 @@ namespace Implem.Pleasanter.Models
                 var originalSessionGuid = context.SessionGuid;
                 var iDatabase = Implem.Pleasanter.Libraries.Redis.CacheForRedisConnection.Connection.GetDatabase();
                 iDatabase.HashDelete(originalSessionGuid, "SwitchLoginId");
-                Context.SetSessionData("SessionGuid", originalSessionGuid);
             }
             else
             {

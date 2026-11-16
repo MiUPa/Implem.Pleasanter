@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Sustainsys.Saml2.AspNetCore2;
 using System;
 using System.Collections.Generic;
@@ -20,6 +21,7 @@ using System.Security.Claims;
 namespace Implem.Pleasanter.Controllers
 {
     [Authorize]
+    [EnableRateLimiting("Admin")]
     public class UsersController : Controller
     {
         [AcceptVerbs(HttpVerbs.Get, HttpVerbs.Post)]
@@ -150,6 +152,37 @@ namespace Implem.Pleasanter.Controllers
         }
 
         [HttpPost]
+        public string PermissionsViewer(int id)
+        {
+            var context = new Context();
+            var log = new SysLogModel(context: context);
+            var json = UserUtilities.PermissionsViewer(
+                context: context,
+                ss: SiteSettingsUtilities.UsersSiteSettings(context: context),
+                userId: id);
+            log.Finish(context: context, responseSize: json.Length);
+            return json;
+        }
+
+        [HttpPost]
+        public ActionResult PermissionsViewerCsv(int id)
+        {
+            var context = new Context();
+            var log = new SysLogModel(context: context);
+            var responseFile = UserUtilities.PermissionsViewerCsv(
+                context: context,
+                ss: SiteSettingsUtilities.UsersSiteSettings(context: context),
+                userId: id);
+            if (responseFile == null)
+            {
+                log.Finish(context: context);
+                return null;
+            }
+            log.Finish(context: context, responseSize: responseFile.Length);
+            return responseFile.ToFile();
+        }
+
+        [HttpPost]
         public string Histories(int id)
         {
             var context = new Context();
@@ -168,6 +201,19 @@ namespace Implem.Pleasanter.Controllers
             var context = new Context();
             var log = new SysLogModel(context: context);
             var json = UserUtilities.History(
+                context: context,
+                ss: SiteSettingsUtilities.UsersSiteSettings(context: context),
+                userId: id);
+            log.Finish(context: context, responseSize: json.Length);
+            return json;
+        }
+
+        [HttpPost]
+        public string HistoryDiff(int id)
+        {
+            var context = new Context();
+            var log = new SysLogModel(context: context);
+            var json = UserUtilities.HistoryDiff(
                 context: context,
                 ss: SiteSettingsUtilities.UsersSiteSettings(context: context),
                 userId: id);
@@ -262,6 +308,7 @@ namespace Implem.Pleasanter.Controllers
             }
             else
             {
+                log.Finish(context: context);
                 return null;
             }
         }
@@ -271,6 +318,7 @@ namespace Implem.Pleasanter.Controllers
         /// </summary>
         [AllowAnonymous]
         [HttpGet]
+        [EnableRateLimiting("AnonymousIp")]
         public ActionResult Challenge(string returnUrl = "", string idp = "")
         {
             var context = new Context();
@@ -297,19 +345,25 @@ namespace Implem.Pleasanter.Controllers
         /// </summary>
         [AllowAnonymous]
         [HttpGet]
+        [EnableRateLimiting("AnonymousIp")]
         public ActionResult Login(string returnUrl, string ssocode = "")
         {
             var context = new Context();
             var log = new SysLogModel(context: context);
             if (Parameters.Authentication.Provider == "SAML-MultiTenant" && ssocode != string.Empty)
             {
+                log.Finish(context: context);
                 return ChallengeBySsoCode(ssocode, context);
             }
             var (redirectUrl, html) = Login(
                 context: context,
                 returnUrl: returnUrl,
                 isLocalUrl: Url.IsLocalUrl(returnUrl));
-            if (!string.IsNullOrEmpty(redirectUrl)) return base.Redirect(redirectUrl);
+            if (!string.IsNullOrEmpty(redirectUrl))
+            {
+                log.Finish(context: context);
+                return base.Redirect(redirectUrl);
+            }
             ViewBag.HtmlBody = html;
             log.Finish(context: context, responseSize: html.Length);
             return View();
@@ -373,14 +427,12 @@ namespace Implem.Pleasanter.Controllers
         private (string redirectUrl, string html) Login(
             Context context, string returnUrl, bool isLocalUrl)
         {
-            var log = new SysLogModel(context: context);
             if (context.Authenticated)
             {
                 if (context.QueryStrings.Bool("new"))
                 {
                     Authentications.SignOut(context: context);
                 }
-                log.Finish(context: context);
                 return (isLocalUrl
                     ? returnUrl
                     : Locations.Top(context: context), null);
@@ -393,7 +445,6 @@ namespace Implem.Pleasanter.Controllers
                 message: context.QueryStrings.ContainsKey("expired") && context.QueryStrings["expired"] == "1" && !context.Ajax
                     ? Messages.Expired(context: context).Text
                     : string.Empty);
-            log.Finish(context: context, responseSize: html.Length);
             return (null, html);
         }
 
@@ -402,6 +453,7 @@ namespace Implem.Pleasanter.Controllers
         /// </summary>
         [AllowAnonymous]
         [HttpPost]
+        [EnableRateLimiting("AnonymousIp")]
         public string Authenticate(string returnUrl, int isAuthenticationByMail = 0)
         {
             var context = new Context();
@@ -466,6 +518,7 @@ namespace Implem.Pleasanter.Controllers
         /// </summary>
         [AllowAnonymous]
         [HttpPost]
+        [EnableRateLimiting("AnonymousIp")]
         public string ChangePasswordAtLogin()
         {
             var context = new Context();
@@ -574,6 +627,21 @@ namespace Implem.Pleasanter.Controllers
             var context = new Context();
             var log = new SysLogModel(context: context);
             var json = UserUtilities.DeleteApiKey(
+                context: context,
+                ss: SiteSettingsUtilities.UsersSiteSettings(context: context));
+            log.Finish(context: context, responseSize: json.Length);
+            return json;
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        [HttpPost]
+        public string UpdateApiAllowIpAddressRange()
+        {
+            var context = new Context();
+            var log = new SysLogModel(context: context);
+            var json = UserUtilities.UpdateApiAllowIpAddressRange(
                 context: context,
                 ss: SiteSettingsUtilities.UsersSiteSettings(context: context));
             log.Finish(context: context, responseSize: json.Length);

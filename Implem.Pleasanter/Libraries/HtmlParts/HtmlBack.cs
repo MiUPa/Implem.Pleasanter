@@ -49,6 +49,7 @@ namespace Implem.Pleasanter.Libraries.HtmlParts
                     return referer != null
                         ? referer
                         : Locations.Top(context: context);
+                case "parameters":
                 case "tenants":
                     return AdminsOrTop(context: context);
                 case "syslogs":
@@ -62,8 +63,9 @@ namespace Implem.Pleasanter.Libraries.HtmlParts
                         case "edit":
                             return Strings.CoalesceEmpty(
                                 referer?.EndsWith("/new") == false
-                                    ? referer
-                                    : null,
+                                    && IsSelfReferer(context: context, referer: referer) == false
+                                        ? referer
+                                        : null,
                                 Locations.Get(
                                     context: context,
                                     parts: context.Controller));
@@ -77,6 +79,16 @@ namespace Implem.Pleasanter.Libraries.HtmlParts
                                     parts: context.Controller);
                         default:
                             return AdminsOrTop(context: context);
+                    }
+                case "backgroundjobs":
+                    switch (context.Action)
+                    {
+                        case "edit":
+                            return Locations.Get(
+                                context: context,
+                                parts: context.Controller);
+                        default:
+                            return Locations.Top(context: context);
                     }
                 case "registrations":
                     switch (context.Action)
@@ -173,6 +185,20 @@ namespace Implem.Pleasanter.Libraries.HtmlParts
                             }
                     }
             }
+        }
+
+        private static bool IsSelfReferer(
+            Context context,
+            string referer)
+        {
+            return System.Uri.TryCreate(
+                referer,
+                System.UriKind.Absolute,
+                out var uri)
+                && string.Equals(
+                    System.Uri.UnescapeDataString(uri.AbsolutePath),
+                    context.AbsolutePath,
+                    System.StringComparison.OrdinalIgnoreCase);
         }
 
         private static string AdminsOrTop(Context context)

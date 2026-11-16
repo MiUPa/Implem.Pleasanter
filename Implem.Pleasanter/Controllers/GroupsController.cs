@@ -11,10 +11,12 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Collections.Generic;
 namespace Implem.Pleasanter.Controllers
 {
     [Authorize]
+    [EnableRateLimiting("Admin")]
     public class GroupsController : Controller
     {
         [AcceptVerbs(HttpVerbs.Get, HttpVerbs.Post)]
@@ -145,6 +147,37 @@ namespace Implem.Pleasanter.Controllers
         }
 
         [HttpPost]
+        public string PermissionsViewer(int id)
+        {
+            var context = new Context();
+            var log = new SysLogModel(context: context);
+            var json = GroupUtilities.PermissionsViewer(
+                context: context,
+                ss: SiteSettingsUtilities.GroupsSiteSettings(context: context),
+                groupId: id);
+            log.Finish(context: context, responseSize: json.Length);
+            return json;
+        }
+
+        [HttpPost]
+        public ActionResult PermissionsViewerCsv(int id)
+        {
+            var context = new Context();
+            var log = new SysLogModel(context: context);
+            var responseFile = GroupUtilities.PermissionsViewerCsv(
+                context: context,
+                ss: SiteSettingsUtilities.GroupsSiteSettings(context: context),
+                groupId: id);
+            if (responseFile == null)
+            {
+                log.Finish(context: context);
+                return null;
+            }
+            log.Finish(context: context, responseSize: responseFile.Length);
+            return responseFile.ToFile();
+        }
+
+        [HttpPost]
         public string Histories(int id)
         {
             var context = new Context();
@@ -163,6 +196,19 @@ namespace Implem.Pleasanter.Controllers
             var context = new Context();
             var log = new SysLogModel(context: context);
             var json = GroupUtilities.History(
+                context: context,
+                ss: SiteSettingsUtilities.GroupsSiteSettings(context: context),
+                groupId: id);
+            log.Finish(context: context, responseSize: json.Length);
+            return json;
+        }
+
+        [HttpPost]
+        public string HistoryDiff(int id)
+        {
+            var context = new Context();
+            var log = new SysLogModel(context: context);
+            var json = GroupUtilities.HistoryDiff(
                 context: context,
                 ss: SiteSettingsUtilities.GroupsSiteSettings(context: context),
                 groupId: id);

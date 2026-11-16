@@ -7,6 +7,7 @@ using Implem.PleasanterFilters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -17,6 +18,7 @@ namespace Implem.Pleasanter.Controllers.Api
     [AllowAnonymous]
     [ApiController]
     [Route("api/[controller]")]
+    [EnableRateLimiting("Api")]
     public class ItemsController : ControllerBase
     {
         [HttpPost("{id}/Get")]
@@ -115,6 +117,7 @@ namespace Implem.Pleasanter.Controllers.Api
         }
 
         [HttpPost("{id}/BulkDelete")]
+        [EnableRateLimiting("ApiHeavy")]
         public ContentResult BulkDelete(long id)
         {
             var body = default(string);
@@ -134,6 +137,7 @@ namespace Implem.Pleasanter.Controllers.Api
         }
 
         [HttpPost("{id}/BulkUpsert")]
+        [EnableRateLimiting("ApiHeavy")]
         public ContentResult BulkUpsert(long id)
         {
             var body = default(string);
@@ -153,6 +157,7 @@ namespace Implem.Pleasanter.Controllers.Api
         }
 
         [HttpPost("{id}/Import")]
+        [EnableRateLimiting("ApiHeavy")]
         public ContentResult Import(long id)
         {
             var body = Request.Form["parameters"];
@@ -171,6 +176,7 @@ namespace Implem.Pleasanter.Controllers.Api
         }
 
         [HttpPost("{id}/Export")]
+        [EnableRateLimiting("ApiHeavy")]
         public ContentResult Export(long id)
         {
             var body = default(string);
@@ -272,6 +278,7 @@ namespace Implem.Pleasanter.Controllers.Api
         }
 
         [HttpPost("{id}/CopySitePackage")]
+        [EnableRateLimiting("ApiHeavy")]
         public ContentResult CopySitePackage(long id)
         {
             var body = default(string);
@@ -291,6 +298,7 @@ namespace Implem.Pleasanter.Controllers.Api
         }
 
         [HttpPost("{id}/SynchronizeSummaries")]
+        [EnableRateLimiting("ApiHeavy")]
         public ContentResult SynchronizeSummaries(long id)
         {
             var body = default(string);
@@ -304,6 +312,7 @@ namespace Implem.Pleasanter.Controllers.Api
             var log = new SysLogModel(context: context);
             if (!context.Authenticated)
             {
+                log.Finish(context: context);
                 return ApiResults.Unauthorized(context: context);
             }
             else
@@ -350,6 +359,27 @@ namespace Implem.Pleasanter.Controllers.Api
                 ? SiteUtilities.GetClosestSiteIdByApi(
                     context: context,
                     id: id)
+                : ApiResults.Unauthorized(context: context);
+            log.Finish(context: context, responseSize: result.Content.Length);
+            return result.ToHttpResponse(request: Request);
+        }
+
+        [HttpPost("{id}/MoveSite")]
+        public ContentResult MoveSite(long id)
+        {
+            var body = default(string);
+            using (var reader = new StreamReader(Request.Body)) body = reader.ReadToEnd();
+            var context = new Context(
+                sessionStatus: User?.Identity?.IsAuthenticated == true,
+                sessionData: User?.Identity?.IsAuthenticated == true,
+                apiRequestBody: body,
+                contentType: Request.ContentType,
+                api: true);
+            var log = new SysLogModel(context: context);
+            var result = context.Authenticated
+                ? SiteUtilities.MoveByApi(
+                    context: context,
+                    siteId: id)
                 : ApiResults.Unauthorized(context: context);
             log.Finish(context: context, responseSize: result.Content.Length);
             return result.ToHttpResponse(request: Request);

@@ -37,8 +37,11 @@ button textarea,
 .ui-widget-content .ui-state-default,
 .ui-widget-header .ui-state-default,
 .ui-button,
+.ui-material-button,
 html .ui-button.ui-state-disabled:hover,
-html .ui-button.ui-state-disabled:active {
+html .ui-button.ui-state-disabled:active,
+html .ui-material-button.ui-state-disabled:hover,
+html .ui-material-button.ui-state-disabled:active {
     color: var(--invert-text);
     background-color: var(--primaryColor);
     border-color: var(--primaryColor);
@@ -53,7 +56,10 @@ html .ui-button.ui-state-disabled:active {
 .ui-widget-content,
 .ui-button,
 .ui-button:hover,
-.ui-button:focus {
+.ui-button:focus,
+.ui-material-button,
+.ui-material-button:hover,
+.ui-material-button:focus {
     background-image: none;
 }
 
@@ -289,6 +295,36 @@ html .ui-button.ui-state-disabled:active {
     }
 }
 
+.ui-material-button {
+    padding: 4px 8px 4px 6px;
+    font-weight: bold;
+    color: var(--btn-normal-label);
+    background: var(--btn-normal-bg);
+    border: 1px solid var(--btn-normal-border);
+    border-radius: 4px;
+    box-shadow: 0 1px 2px var(--base-shadow);
+    transition:
+        background 150ms ease-out,
+        box-shadow 150ms ease-out;
+    &:hover,
+    &:focus,
+    &:active {
+        color: var(--btn-normal-label);
+        background: var(--btn-normal-hover);
+        border: 1px solid var(--btn-normal-border);
+    }
+    &:hover {
+        box-shadow: 0 2px 4px var(--base-shadow);
+    }
+    .material-symbols-sharp-label {
+        padding-bottom: 3px;
+        margin-right: 4px;
+        font-size: 16px;
+        line-height: 1;
+        vertical-align: middle;
+    }
+}
+
 .button-neutral {
     &,
     &:hover,
@@ -420,7 +456,6 @@ input {
 /* select-field */
 .select-field {
     position: relative;
-    display: block;
     .control-textbox {
         float: none;
         padding-right: 24px;
@@ -741,6 +776,17 @@ input {
                     }
                 }
             }
+
+            @media print {
+                padding-bottom: 0.2em;
+                border: none;
+                &::before {
+                    display: none;
+                }
+                input {
+                    display: block;
+                }
+            }
         }
         .radio-text {
             display: block;
@@ -768,6 +814,8 @@ input {
         width: 20px;
         height: 20px;
         overflow: hidden;
+        caret-color: transparent;
+        user-select: none;
         background-color: var(--control-bg);
         border: 1px solid var(--control-border);
         border-radius: 4px;
@@ -822,6 +870,17 @@ input {
                 + .check-text {
                     color: var(--control-text-read);
                 }
+            }
+        }
+
+        @media print {
+            padding-bottom: 0.4em;
+            border: none;
+            &::before {
+                display: none;
+            }
+            input {
+                display: block;
             }
         }
     }
@@ -1301,6 +1360,15 @@ label {
     }
 }
 
+.no-field-label {
+    div.field-normal .container-normal,
+    div.field-wide .container-normal,
+    div.field-markdown .container-normal,
+    div.field-textarea .container-normal {
+        margin-left: 0;
+    }
+}
+
 /* command */
 .command-center,
 .command-right,
@@ -1374,6 +1442,9 @@ body {
     color: var(--base-text);
     background-color: var(--base-bg);
     border-bottom: 1px solid var(--base-border);
+    &:empty {
+        display: none;
+    }
     #Logo {
         float: none;
         padding: 0;
@@ -1656,6 +1727,15 @@ body {
 }
 
 /* Organisms ---------------------------------------------------------------- */
+
+/* #Application > #LicenseExpiredAlert */
+#LicenseExpiredAlert {
+    display: block;
+    min-height: 32px;
+    padding: 5px;
+    color: #fff;
+    background-color: var(--warning-color);
+}
 
 /* #Application > #CopyToClipboards */
 #CopyToClipboards {
@@ -2036,6 +2116,16 @@ body {
     }
 }
 
+/* #Application > #BackgroundJobInfo */
+#BackgroundJobInfo {
+    margin: 0 10px 0 0;
+    border-radius: 0;
+}
+
+.background-job-notice {
+    border-radius: 4px;
+}
+
 /* #Application > #MainForm > #ViewSelectorField */
 #ViewSelectorField {
     top: 5px;
@@ -2072,7 +2162,37 @@ body {
 /* #Application > #MainForm > #ViewFilters */
 
 /* #ViewFilters > #ViewFiltersLabelMenus */
-#ViewFilters {
+
+/* #FieldSetPermissionsViewer > #PermissionsViewerLicenseGuide */
+#PermissionsViewerLicenseGuide {
+    padding: 10px 16px 8px;
+    margin: 8px 0;
+    color: var(--guide-text);
+    background-color: var(--guide-bg);
+    border: 1px solid var(--base-border);
+    border-radius: 4px;
+    a {
+        color: var(--recommend-guide-link-text) !important;
+        text-decoration: none;
+    }
+    .recommend-guide-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+}
+
+/* #FieldSetPermissionsViewer > #PermissionsViewerCommands */
+#PermissionsViewerCommands {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 16px 0;
+}
+
+#ViewFilters,
+#PermissionsViewerFilters {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
@@ -2136,8 +2256,18 @@ body {
     }
 }
 
+#FieldSetPermissionsViewer {
+    .field-section.expand {
+        margin: 0;
+    }
+    #PermissionsViewerFilters {
+        padding-top: 8px;
+    }
+}
+
 /* #Application > #MainForm > #Aggregations */
-#Aggregations {
+#Aggregations,
+#PermissionsViewerCount {
     float: none;
     clear: both;
     display: flex;
@@ -2180,6 +2310,16 @@ body {
             color: var(--invert-text);
             background: var(--warning-color);
             border: 1px solid var(--warning-color);
+        }
+    }
+    &.background-jobs {
+        .label.background-job-warning {
+            color: var(--invert-text);
+            background: var(--warning-color);
+            border: 1px solid var(--warning-color);
+        }
+        .data.background-job-warning {
+            color: var(--warning-color);
         }
     }
 }
@@ -2346,8 +2486,11 @@ body {
     #EditorComments {
         position: sticky;
         top: 0;
+        display: flex;
+        flex-direction: column;
         order: 1;
-        padding: 16px;
+        max-height: calc(100vh - 72px);
+        padding: 0;
         margin-bottom: 0;
         color: var(--base-text);
 
@@ -2365,17 +2508,33 @@ body {
         #Comments {
             min-height: 100px;
         }
+        #CommentField {
+            padding: 16px;
+            .md-editor,
+            .md-viewer {
+                max-height: 40vh;
+                overflow-y: auto;
+                scrollbar-color: var(--scrollbar-thumb) transparent;
+                scrollbar-width: thin;
+            }
+        }
         #CommentList {
+            padding: 0 16px 32px;
+            overflow-y: auto;
+            scrollbar-color: var(--scrollbar-thumb) transparent;
+            scrollbar-width: thin;
             .comment-header {
                 &:has(+ markdown-field textarea) {
                     padding-right: 32px;
                 }
             }
         }
+        &:not(:has(#CommentField)) #CommentList {
+            padding-top: 16px;
+        }
     }
     #EditorTabsContainer {
-        position: sticky;
-        top: 0;
+        position: relative;
         z-index: 1;
         margin-bottom: 0;
         background-color: var(--editor-bg);
@@ -3095,6 +3254,26 @@ body:not(:has(#Editor)) {
                 div[data-order-type] {
                     display: flex;
                     width: fit-content;
+                    max-width: 100%;
+                    > span:not(.ui-icon) {
+                        min-width: 0;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                    }
+                    .ui-icon {
+                        flex-shrink: 0;
+                    }
+                }
+                &[data-cell-wordwrap] {
+                    div[data-order-type] {
+                        white-space: normal;
+                        > span:not(.ui-icon) {
+                            overflow: visible;
+                            text-overflow: clip;
+                            white-space: normal;
+                        }
+                    }
                 }
                 &[data-cell-width] {
                     overflow: hidden;
@@ -3282,6 +3461,17 @@ body:not(:has(#Editor)) {
     }
 }
 
+#Grid .background-job-status {
+    &.background-job-warning {
+        display: inline-block;
+        padding: 4px 8px;
+        color: var(--invert-text);
+        background: var(--warning-color);
+        border: 1px solid var(--warning-color);
+        border-radius: 4px;
+    }
+}
+
 .grid-wrap {
     display: block;
     &.app-scrollable {
@@ -3379,9 +3569,6 @@ body:not(:has(#Editor)) {
     background-color: var(--base-bg-light);
     #MainContainer {
         margin-left: 0;
-    }
-    #PortalLink {
-        top: -30px;
     }
     #LoginLogo {
         margin: 100px auto 40px;
@@ -3996,6 +4183,14 @@ body:has(input#Controller[value='syslogs']) {
         + button {
             margin-left: 8px;
         }
+    }
+    > .select-field {
+        float: left;
+        display: block;
+        padding-bottom: 15px;
+    }
+    > .button {
+        margin-bottom: 15px;
     }
     .grid:has(.crosstab-row) {
         border-right: 1px solid var(--base-border);

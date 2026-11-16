@@ -19,7 +19,10 @@ namespace Implem.Pleasanter.Libraries.BackgroundServices
     {
         public override async Task Execute(IJobExecutionContext jobContext)
         {
-            if (Parameters.Script.ServerScript != true || Parameters.Script.BackgroundServerScript != true) return;
+            if (Parameters.BackgroundService.BackgroundServerScriptEnabled(
+                deploymentEnvironment: Parameters.Service.DeploymentEnvironment,
+                serverScript: Parameters.Script.ServerScript,
+                backgroundServerScript: Parameters.Script.BackgroundServerScript) != true) return;
             var dataMap = jobContext.MergedJobDataMap;
             var tenatId = dataMap.GetInt("tenantId");
             var scriptId = dataMap.GetInt("scriptId");
@@ -29,6 +32,7 @@ namespace Implem.Pleasanter.Libraries.BackgroundServices
             await Task.Run(() =>
             {
                 var sqlContext = CreateContext(tenantId: tenatId, userId: userId);
+                SysLogModel log = null;
                 try
                 {
                     var ss = SiteSettingsUtilities.TenantsSiteSettings(context: sqlContext);
@@ -48,7 +52,7 @@ namespace Implem.Pleasanter.Libraries.BackgroundServices
                             .FirstOrDefault(s => s.Id == scriptId);
                         if (targetScript == null || !BackgroundServerScriptValidators.CanExecuteUser(context: sqlContext, script: targetScript))
                         {
-                            new SysLogModel(
+                            log = new SysLogModel(
                                 context: sqlContext,
                                 method: nameof(BackgroundServerScriptJob) + ":" + nameof(Execute),
                                 message: $"Skip BGServerScript TenantId={tenatId},ScriptId={scriptId},ScheduleId={scheduleId},UserId={userId}",
@@ -57,7 +61,7 @@ namespace Implem.Pleasanter.Libraries.BackgroundServices
                         }
                         scripts.Add(targetScript);
                         targetScript.SetDebug();
-                        var log = new SysLogModel(
+                        log = new SysLogModel(
                             context: sqlContext,
                             method: nameof(BackgroundServerScriptJob) + ":" + nameof(Execute),
                             message: $"Exec BGServerScript TenantId={tenatId},ScriptId={scriptId},ScheduleId={scheduleId},UserId={userId}",
@@ -71,7 +75,6 @@ namespace Implem.Pleasanter.Libraries.BackgroundServices
                             scripts: scripts.ToArray(),
                             condition: ServerScriptModel.ServerScriptConditions.BackgroundServerScript,
                             debug: paramScripts != null && targetScript.Debug);
-                        log.Finish(context: sqlContext);
                     }
                 }
                 catch (Exception e)
@@ -79,6 +82,10 @@ namespace Implem.Pleasanter.Libraries.BackgroundServices
                     new SysLogModel(
                         context: sqlContext,
                         e: e);
+                }
+                finally
+                {
+                    log?.Finish(context: sqlContext);
                 }
             }, jobContext.CancellationToken);
         }
@@ -116,6 +123,12 @@ namespace Implem.Pleasanter.Libraries.BackgroundServices
             context.SetTenantProperties(force: true);
             context.BackgroundServerScript = true;
             context.AbsoluteUri = Parameters.Service.AbsoluteUri;
+            context.TimeZoneInfo = new UserModel()
+                .Get(
+                    context: context,
+                    ss: null,
+                    where: Rds.UsersWhere().UserId(userId))
+                .TimeZoneInfo;
             return context;
         }
     }

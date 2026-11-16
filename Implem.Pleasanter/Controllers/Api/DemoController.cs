@@ -5,6 +5,7 @@ using Implem.Pleasanter.Models;
 using Implem.PleasanterFilters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.IO;
 namespace Implem.Pleasanter.Controllers.Api
 {
@@ -12,6 +13,7 @@ namespace Implem.Pleasanter.Controllers.Api
     [AllowAnonymous]
     [ApiController]
     [Route("api/[controller]")]
+    [EnableRateLimiting("Api")]
     public class DemoController : ControllerBase
     {
         [HttpPost("Register")]
@@ -24,7 +26,7 @@ namespace Implem.Pleasanter.Controllers.Api
                 contentType: Request.ContentType,
                 api: true);
             var log = new SysLogModel(context: context);
-            if (Parameters.Service.DemoApi)
+            if (Parameters.Environment() == 2 && Parameters.Service.DemoApi)
             {
                 var result = DemoUtilities.RegisterByApi(context: context);
                 log.Finish(context: context, responseSize: result.Content.Length);

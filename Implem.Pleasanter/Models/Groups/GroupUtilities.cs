@@ -318,6 +318,20 @@ namespace Implem.Pleasanter.Models
                     .Log(context.GetLog())
                     .ToJson();
             }
+            catch (Implem.Libraries.Exceptions.GridDataTimeoutException)
+            {
+                return new ResponseCollection(context: context)
+                    .Message(context.Messages.Last())
+                    .Log(context.GetLog())
+                    .ToJson();
+            }
+            catch (Implem.Libraries.Exceptions.GridDataException)
+            {
+                return new ResponseCollection(context: context)
+                    .Message(context.Messages.Last())
+                    .Log(context.GetLog())
+                    .ToJson();
+            }
             var columns = ss.GetGridColumns(
                 context: context,
                 view: view,
@@ -1090,8 +1104,23 @@ namespace Implem.Pleasanter.Models
                                     groupModel: groupModel)
                                 .FieldSet(
                                     attributes: new HtmlAttributes()
+                                        .Id("FieldSetPermissionsViewer")
+                                        .DataAction("PermissionsViewer")
+                                        .DataMethod("post"),
+                                    _using: groupModel.MethodType != BaseModel.MethodTypes.New
+                                        && HtmlPermissionsViewer.Readable(
+                                            context: context,
+                                            tableName: "Groups"))
+                                .FieldSet(
+                                    attributes: new HtmlAttributes()
                                         .Id("FieldSetHistories")
                                         .DataAction("Histories")
+                                        .DataMethod("post"),
+                                    _using: groupModel.MethodType != BaseModel.MethodTypes.New)
+                                .FieldSet(
+                                    attributes: new HtmlAttributes()
+                                        .Id("FieldSetHistoryDiff")
+                                        .DataAction("HistoryDiff")
                                         .DataMethod("post"),
                                     _using: groupModel.MethodType != BaseModel.MethodTypes.New)
                                 .MainCommands(
@@ -1111,6 +1140,10 @@ namespace Implem.Pleasanter.Models
                             value: Locations.BaseUrl(context: context))
                         .Hidden(
                             controlId: "Ver",
+                            value: groupModel.Ver.ToString())
+                        .Hidden(
+                            controlId: "HistoryDiffBaseVer",
+                            css: "control-hidden always-send",
                             value: groupModel.Ver.ToString())
                         .Hidden(
                             controlId: "MethodType",
@@ -1165,11 +1198,26 @@ namespace Implem.Pleasanter.Models
                         text: Displays.ChildGroup(context: context),
                         _using: groupModel.MethodType != BaseModel.MethodTypes.New))
                 .Li(
+                    _using: groupModel.MethodType != BaseModel.MethodTypes.New
+                        && HtmlPermissionsViewer.Readable(
+                            context: context,
+                            tableName: "Groups"),
+                    action: () => hb
+                        .A(
+                            href: "#FieldSetPermissionsViewer",
+                            text: Displays.PermissionsViewer(context: context)))
+                .Li(
                     _using: groupModel.MethodType != BaseModel.MethodTypes.New,
                     action: () => hb
                         .A(
                             href: "#FieldSetHistories",
-                            text: Displays.ChangeHistoryList(context: context))));
+                            text: Displays.ChangeHistoryList(context: context)))
+                .Li(
+                    _using: groupModel.MethodType != BaseModel.MethodTypes.New,
+                    action: () => hb
+                        .A(
+                            href: "#FieldSetHistoryDiff",
+                            text: Displays.HistoryDiff(context: context))));
         }
 
         private static HtmlBuilder FieldSetGeneral(
@@ -1556,6 +1604,24 @@ namespace Implem.Pleasanter.Models
                                     value: groupModel.SynchronizedTime.ToResponse(context: context, ss: ss, column: column),
                                     options: column.ResponseValOptions(serverScriptModelColumn: serverScriptModelColumn));
                                 break;
+                            case "ScimId":
+                                res.Val(
+                                    target: "#Groups_ScimId" + idSuffix,
+                                    value: groupModel.ScimId.ToResponse(context: context, ss: ss, column: column),
+                                    options: column.ResponseValOptions(serverScriptModelColumn: serverScriptModelColumn));
+                                break;
+                            case "ScimExternalId":
+                                res.Val(
+                                    target: "#Groups_ScimExternalId" + idSuffix,
+                                    value: groupModel.ScimExternalId.ToResponse(context: context, ss: ss, column: column),
+                                    options: column.ResponseValOptions(serverScriptModelColumn: serverScriptModelColumn));
+                                break;
+                            case "ScimSync":
+                                res.Val(
+                                    target: "#Groups_ScimSync" + idSuffix,
+                                    value: groupModel.ScimSync,
+                                    options: column.ResponseValOptions(serverScriptModelColumn: serverScriptModelColumn));
+                                break;
                             default:
                                 switch (Def.ExtendedColumnTypes.Get(column?.Name ?? string.Empty))
                                 {
@@ -1875,6 +1941,104 @@ namespace Implem.Pleasanter.Models
             }
         }
 
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        public static bool CreateByServerScript(
+            Context context,
+            SiteSettings ss,
+            int groupId)
+        {
+            var groupApiModel = context.RequestDataString.Deserialize<GroupApiModel>();
+            if (groupApiModel == null)
+            {
+                context.InvalidJsonData = !context.RequestDataString.IsNullOrEmpty();
+            }
+            var groupModel = new GroupModel(
+                context: context,
+                ss: ss,
+                groupId: groupId,
+                groupApiModel: groupApiModel);
+            var invalid = GroupValidators.OnCreating(
+                context: context,
+                ss: ss,
+                groupModel: groupModel,
+                api: true,
+                serverScript: true);
+            switch (invalid.Type)
+            {
+                case Error.Types.None: break;
+                default:
+                    return false;
+            }
+            groupModel.VerUp = Versions.MustVerUp(
+                context: context,
+                ss: ss,
+                baseModel: groupModel);
+            var errorData = groupModel.Create(
+                context: context,
+                ss: ss,
+                groupApiModel: groupApiModel);
+            switch (errorData.Type)
+            {
+                case Error.Types.None:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Fixed:
+        /// </summary>
+        public static bool UpdateByServerScript(
+            Context context,
+            SiteSettings ss,
+            int groupId)
+        {
+            var groupApiModel = context.RequestDataString.Deserialize<GroupApiModel>();
+            if (groupApiModel == null)
+            {
+                context.InvalidJsonData = !context.RequestDataString.IsNullOrEmpty();
+            }
+            var groupModel = new GroupModel(
+                context: context,
+                ss: ss,
+                groupId: groupId,
+                groupApiModel: groupApiModel);
+            if (groupModel.AccessStatus != Databases.AccessStatuses.Selected)
+            {
+                return false;
+            }
+            var invalid = GroupValidators.OnUpdating(
+                context: context,
+                ss: ss,
+                groupModel: groupModel,
+                api: true,
+                serverScript: true);
+            switch (invalid.Type)
+            {
+                case Error.Types.None: break;
+                default:
+                    return false;
+            }
+            groupModel.VerUp = Versions.MustVerUp(
+                context: context,
+                ss: ss,
+                baseModel: groupModel);
+            var errorData = groupModel.Update(
+                context: context,
+                ss: ss,
+                groupApiModel: groupApiModel);
+            switch (errorData.Type)
+            {
+                case Error.Types.None:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
         public static string Delete(Context context, SiteSettings ss, int groupId)
         {
             var groupModel = new GroupModel(context, ss, groupId);
@@ -1906,6 +2070,55 @@ namespace Implem.Pleasanter.Models
                 default:
                     return errorData.MessageJson(context: context);
             }
+        }
+
+        public static string PermissionsViewer(
+            Context context, SiteSettings ss, int groupId)
+        {
+            var groupModel = new GroupModel(context: context, ss: ss, groupId: groupId);
+            if (!context.CanRead(ss: ss))
+            {
+                return Error.Types.HasNotPermission.MessageJson(context: context);
+            }
+            if (!HtmlPermissionsViewer.Readable(context: context, tableName: "Groups"))
+            {
+                return Error.Types.HasNotPermission.MessageJson(context: context);
+            }
+            if (groupModel.AccessStatus != Databases.AccessStatuses.Selected)
+            {
+                return Error.Types.NotFound.MessageJson(context: context);
+            }
+            return HtmlPermissionsViewer.PermissionsViewer(
+                context: context,
+                res: new GroupsResponseCollection(
+                    context: context,
+                    groupModel: groupModel),
+                tableName: "Groups",
+                id: groupId)
+                    .Messages(context.Messages)
+                    .ToJson();
+        }
+
+        public static ResponseFile PermissionsViewerCsv(
+            Context context, SiteSettings ss, int groupId)
+        {
+            var groupModel = new GroupModel(context: context, ss: ss, groupId: groupId);
+            if (!context.CanRead(ss: ss))
+            {
+                return null;
+            }
+            if (!HtmlPermissionsViewer.Readable(context: context, tableName: "Groups"))
+            {
+                return null;
+            }
+            if (groupModel.AccessStatus != Databases.AccessStatuses.Selected)
+            {
+                return null;
+            }
+            return HtmlPermissionsViewer.PermissionsViewerCsv(
+                context: context,
+                tableName: "Groups",
+                id: groupId);
         }
 
         public static string Histories(
@@ -2030,6 +2243,74 @@ namespace Implem.Pleasanter.Models
                                 : string.Empty)
                     }))
                 .ToJson();
+        }
+
+        public static string HistoryDiff(Context context, SiteSettings ss, int groupId)
+        {
+            if (!context.CanRead(ss: ss))
+            {
+                return Error.Types.HasNotPermission.MessageJson(context: context);
+            }
+            return HistoryDiffUtilities.HistoryDiff(
+                context: context,
+                ss: ss,
+                versions: new GroupCollection(
+                    context: context,
+                    ss: ss,
+                    column: Rds.GroupsColumn()
+                        .GroupId()
+                        .Ver()
+                        .Updator()
+                        .UpdatedTime(),
+                    where: HistoryDiffWhere(
+                        context: context,
+                        groupId: groupId),
+                    orderBy: Rds.GroupsOrderBy().Ver(SqlOrderBy.Types.desc),
+                    tableType: Sqls.TableTypes.NormalAndHistory)
+                        .ToList(),
+                getModel: ver => HistoryDiffGroupModel(
+                    context: context,
+                    ss: ss,
+                    groupId: groupId,
+                    ver: ver),
+                toDisplay: (groupModel, column, mine) => groupModel.ToDisplay(
+                    context: context,
+                    ss: ss,
+                    column: column,
+                    mine: mine));
+        }
+
+
+        private static SqlWhereCollection HistoryDiffWhere(
+            Context context,
+            int groupId,
+            int? ver = null)
+        {
+            return Rds.GroupsWhere()
+                .TenantId(context.TenantId)
+                .GroupId(groupId)
+                .Ver(value: ver, _using: ver.HasValue);
+        }
+
+        private static GroupModel HistoryDiffGroupModel(
+            Context context,
+            SiteSettings ss,
+            int groupId,
+            int ver)
+        {
+            var groupModel = new GroupModel(
+                context: context,
+                ss: ss,
+                groupId: groupId);
+            groupModel.Get(
+                context: context,
+                ss: ss,
+                where: HistoryDiffWhere(
+                    context: context,
+                    groupId: groupId,
+                    ver: ver),
+                tableType: Sqls.TableTypes.NormalAndHistory);
+            return groupModel;
         }
 
         /// <summary>
@@ -4328,59 +4609,6 @@ namespace Implem.Pleasanter.Models
                     return ApiResults.Error(
                         context: context,
                         errorData: errorData);
-            }
-        }
-
-        /// <summary>
-        /// Fixed:
-        /// </summary>
-        public static bool UpdateByServerScript(
-            Context context,
-            SiteSettings ss,
-            int groupId,
-            object model)
-        {
-            var groupApiModel = context.RequestDataString.Deserialize<GroupApiModel>();
-            if (groupApiModel == null)
-            {
-                context.InvalidJsonData = !context.RequestDataString.IsNullOrEmpty();
-            }
-            var groupModel = new GroupModel(
-                context: context,
-                ss: ss,
-                groupId: groupId,
-                groupApiModel: groupApiModel);
-            if (groupModel.AccessStatus != Databases.AccessStatuses.Selected)
-            {
-                return false;
-            }
-            var invalid = GroupValidators.OnUpdating(
-                context: context,
-                ss: ss,
-                groupModel: groupModel,
-                api: true);
-            switch (invalid.Type)
-            {
-                case Error.Types.None: break;
-                default:
-                    return false;
-            }
-            groupModel.VerUp = Versions.MustVerUp(
-                context: context,
-                ss: ss,
-                baseModel: groupModel);
-            var errorData = groupModel.Update(
-                context: context,
-                ss: ss,
-                groupApiModel: groupApiModel);
-            switch (errorData.Type)
-            {
-                case Error.Types.None:
-                    return true;
-                case Error.Types.Duplicated:
-                    return false;
-                default:
-                    return false;
             }
         }
 

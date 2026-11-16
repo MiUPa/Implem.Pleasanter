@@ -1,11 +1,10 @@
-﻿using Implem.DefinitionAccessor;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Implem.DefinitionAccessor;
+using Implem.Pleasanter.Libraries.Requests;
 using Implem.Pleasanter.Models;
 using Quartz;
-using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Implem.Pleasanter.Libraries.BackgroundServices
 {
@@ -22,13 +21,44 @@ namespace Implem.Pleasanter.Libraries.BackgroundServices
             public string JobName => "ReminderBackgroundService";
             public async Task<bool> SetCustomTimer(IScheduler scheduler)
             {
+                const int minInterval = 30;
+                const int maxInterval = 3600;
+                var configured = Parameters.BackgroundService.ReminderCheckIntervalSeconds;
+                var intervalSeconds = Math.Clamp(configured, minInterval, maxInterval);
+                if (configured != intervalSeconds)
+                {
+                    var context = new Context(
+                        request: false,
+                        sessionStatus: false,
+                        sessionData: false,
+                        user: false,
+                        item: false)
+                    {
+                        Controller = JobName
+                    };
+                    _ = new SysLogModel(
+                        context: context,
+                        method: $"{nameof(ReminderBackgroundTimer)}.{nameof(Param)}.{nameof(SetCustomTimer)}",
+                        message: $"{nameof(Parameters.BackgroundService.ReminderCheckIntervalSeconds)} is out of range. " +
+                            $"Configured: {configured}, Used: {intervalSeconds} " +
+                            $"(valid range: {minInterval}-{maxInterval}).",
+                        sysLogType: SysLogModel.SysLogTypes.Warning);
+                }
+                var triggerKey = TimerTriggerRegistrar.SimpleTriggerKey(JobKey);
                 var trigger = TriggerBuilder.Create()
+                    .WithIdentity(triggerKey)
                     .ForJob(JobKey)
                     .WithSimpleSchedule(x => x
-                        .WithIntervalInSeconds(60)
+                        .WithIntervalInSeconds(intervalSeconds)
                         .RepeatForever())
                     .Build();
-                await scheduler.ScheduleJob(trigger);
+                await TimerTriggerRegistrar.EnsureTriggerAsync(
+                    scheduler: scheduler,
+                    trigger: trigger);
+                await TimerTriggerRegistrar.CleanupUnexpectedTriggersAsync(
+                    scheduler: scheduler,
+                    jobKey: JobKey,
+                    expectedKeys: [triggerKey]);
                 return true;
             }
         }
@@ -47,14 +77,14 @@ namespace Implem.Pleasanter.Libraries.BackgroundServices
                 }
                 catch (OperationCanceledException e)
                 {
-                    new SysLogModel(
+                    _ = new SysLogModel(
                         context: context,
                         e: e,
                         extendedErrorMessage: "ReminderBackgroundService Canceled");
                 }
                 catch (Exception e)
                 {
-                    new SysLogModel(
+                    _ = new SysLogModel(
                         context: context,
                         e: e,
                         extendedErrorMessage: "ReminderBackgroundService Exception");

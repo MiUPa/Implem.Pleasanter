@@ -1,9 +1,9 @@
 ﻿$p.getData = function ($control) {
-    formId = $p.getFormId($control);
-    if (!(formId in $p.data)) {
-        $p.data[formId] = {};
+    $p.store.formId = $p.getFormId($control);
+    if (!($p.store.formId in $p.data)) {
+        $p.data[$p.store.formId] = {};
     }
-    return $p.data[formId];
+    return $p.data[$p.store.formId];
 };
 
 $p.set = function ($control, val) {
@@ -15,7 +15,8 @@ $p.set = function ($control, val) {
             case 'textarea':
                 $control.val(val);
                 var markdownField = $control.get(0).closest('markdown-field');
-                if (markdownField && !$control.is(':visible')) {
+                var viewerType = $control.get(0).dataset.viewerType;
+                if (markdownField && !$control.is(':visible') && viewerType !== 'disabled') {
                     markdownField.showViewer();
                 }
                 break;
@@ -55,6 +56,9 @@ $p.set = function ($control, val) {
                             $('input[name="' + $control.attr('id') + '"]').val([val]);
                             // radio-valueへのデータ格納
                             $control.val(val);
+                        } else if ($control.is('.control-textbox.anchor')) {
+                            $control.val(val);
+                            $p.showAnchorViewer($control);
                         } else {
                             $control.val(val);
                         }
@@ -186,7 +190,7 @@ $p.clearData = function (target, data, type) {
         data = $p.getData($('.main-form'));
     }
     if (target === undefined) {
-        for (controlId in data) {
+        for (var controlId in data) {
             if (!$('#' + controlId).hasClass('control-selectable')) {
                 Delete(controlId);
             }

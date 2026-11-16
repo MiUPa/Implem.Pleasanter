@@ -4,9 +4,11 @@ using Implem.Pleasanter.Models;
 using Implem.PleasanterFilters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 namespace Implem.Pleasanter.Controllers
 {
     [Authorize]
+    [EnableRateLimiting("Admin")]
     public class TenantsController : Controller
     {
         [AcceptVerbs(HttpVerbs.Get, HttpVerbs.Post)]
@@ -51,6 +53,7 @@ namespace Implem.Pleasanter.Controllers
         }
 
         [HttpPost]
+        [DisableRateLimiting]
         public string SyncByLdap()
         {
             var context = new Context();
@@ -71,6 +74,18 @@ namespace Implem.Pleasanter.Controllers
                 context: context,
                 ss: SiteSettingsUtilities.TenantsSiteSettings(context: context),
                 tenantId: tenantId);
+            log.Finish(context: context, responseSize: json.Length);
+            return json;
+        }
+
+        [AcceptVerbs(HttpVerbs.Put, HttpVerbs.Post, HttpVerbs.Delete)]
+        public string SetScimToken(long tenantId)
+        {
+            var context = new Context();
+            var log = new SysLogModel(context: context);
+            var json = ScimTokenUtilities.SetScimToken(
+                context: context,
+                ss: SiteSettingsUtilities.TenantsSiteSettings(context: context));
             log.Finish(context: context, responseSize: json.Length);
             return json;
         }

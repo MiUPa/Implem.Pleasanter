@@ -10,12 +10,30 @@ namespace Implem.Pleasanter.Libraries.General
         public enum Types
         {
             None,
+            AiConnectDeleteJobRetryExceeded,
+            AiConnectIndexCheckIncomplete,
+            AiConnectJobRetryExceeded,
+            AiConnectOutputFilePathNotSet,
+            AiConnectResyncAlreadyEnqueued,
             AlreadyAdded,
             AlreadyLinked,
+            ApiKeyNotAllowedIpAddress,
             ApplicationError,
             ApprovalMessageInvited,
             ApprovalMessageInviting,
             Authentication,
+            BackgroundJobBulkDeleteFailed,
+            BackgroundJobDownloadingCanNotDelete,
+            BackgroundJobExecutionFailed,
+            BackgroundJobInputFilePathNotConfigured,
+            BackgroundJobInvalidParameters,
+            BackgroundJobNextJobRequestFailed,
+            BackgroundJobNoHandler,
+            BackgroundJobOutputFilePathNotConfigured,
+            BackgroundJobRecoverOrphanPreparingFailed,
+            BackgroundJobRecoverStuckFailed,
+            BackgroundJobRunningTimedOutCanNotDelete,
+            BackgroundJobsCancelFailed,
             BadFormat,
             BadMailAddress,
             BadPasswordWhenImporting,
@@ -43,12 +61,16 @@ namespace Implem.Pleasanter.Libraries.General
             EmptyUserName,
             Expired,
             ExportNotSetEmail,
+            ExportNotSetSupportFrom,
             ExternalMailAddress,
             FailedBulkUpsert,
             FailedReadFile,
+            FailedSyncAiProviders,
             FailedWriteFile,
             FileNotFound,
             FormulaExecutionFailed,
+            GridDataTimeout,
+            GridDataUnexpectedError,
             GroupDepthMax,
             HasNotChangeColumnPermission,
             HasNotPermission,
@@ -64,6 +86,8 @@ namespace Implem.Pleasanter.Libraries.General
             IncorrectUser,
             InputMailAddress,
             InternalServerError,
+            InvalidAiProviderSetting,
+            InvalidApiAllowIpAddressRange,
             InvalidCsvData,
             InvalidDateHhMmFormat,
             InvalidFormula,
@@ -78,11 +102,13 @@ namespace Implem.Pleasanter.Libraries.General
             InvalidValidateRequiredCsvData,
             ItemsLimit,
             JoeAccountCheck,
+            JsonParseError,
             LockedRecord,
             LockedTable,
             LoginExpired,
             LoginIdAlreadyUse,
             MailAddressHasNotSet,
+            NewVersionMustBeNewer,
             NoLinks,
             NotContainKeyColumn,
             NotFound,
@@ -92,6 +118,7 @@ namespace Implem.Pleasanter.Libraries.General
             Overlap,
             OverlapCsvImport,
             OverLimitApi,
+            OverLimitForm,
             OverLimitQuantity,
             OverLimitSize,
             OverLocalFolderLimitSize,
@@ -113,6 +140,7 @@ namespace Implem.Pleasanter.Libraries.General
             PleaseInputData,
             PleaseUncheck,
             ProcessNotFound,
+            RateLimitExceeded,
             RejectNullImport,
             ReminderErrorContent,
             ReminderErrorTitle,
@@ -126,10 +154,14 @@ namespace Implem.Pleasanter.Libraries.General
             SelectFile,
             SelectOne,
             SelectTargets,
+            ServerConnectionError,
             ServerScriptErrorDetail,
             ServerScriptErrorPosition,
             ServerScriptExecutionFailed,
+            ServiceUnavailable,
             SitesLimit,
+            SuspendRequired,
+            TooLargeFile,
             TooLongText,
             TooManyCases,
             TooManyColumnCases,
@@ -139,7 +171,8 @@ namespace Implem.Pleasanter.Libraries.General
             UserDisabled,
             UserLockout,
             UserNotSelfDelete,
-            UsersLimit
+            UsersLimit,
+            ValidationError
         }
 
         public static bool Has(this Types type)
@@ -151,12 +184,36 @@ namespace Implem.Pleasanter.Libraries.General
         {
             switch (type)
             {
+                case Types.AiConnectDeleteJobRetryExceeded:
+                    return Messages.AiConnectDeleteJobRetryExceeded(
+                        context: context,
+                        data: data);
+                case Types.AiConnectIndexCheckIncomplete:
+                    return Messages.AiConnectIndexCheckIncomplete(
+                        context: context,
+                        data: data);
+                case Types.AiConnectJobRetryExceeded:
+                    return Messages.AiConnectJobRetryExceeded(
+                        context: context,
+                        data: data);
+                case Types.AiConnectOutputFilePathNotSet:
+                    return Messages.AiConnectOutputFilePathNotSet(
+                        context: context,
+                        data: data);
+                case Types.AiConnectResyncAlreadyEnqueued:
+                    return Messages.AiConnectResyncAlreadyEnqueued(
+                        context: context,
+                        data: data);
                 case Types.AlreadyAdded:
                     return Messages.AlreadyAdded(
                         context: context,
                         data: data);
                 case Types.AlreadyLinked:
                     return Messages.AlreadyLinked(
+                        context: context,
+                        data: data);
+                case Types.ApiKeyNotAllowedIpAddress:
+                    return Messages.ApiKeyNotAllowedIpAddress(
                         context: context,
                         data: data);
                 case Types.ApplicationError:
@@ -173,6 +230,54 @@ namespace Implem.Pleasanter.Libraries.General
                         data: data);
                 case Types.Authentication:
                     return Messages.Authentication(
+                        context: context,
+                        data: data);
+                case Types.BackgroundJobBulkDeleteFailed:
+                    return Messages.BackgroundJobBulkDeleteFailed(
+                        context: context,
+                        data: data);
+                case Types.BackgroundJobDownloadingCanNotDelete:
+                    return Messages.BackgroundJobDownloadingCanNotDelete(
+                        context: context,
+                        data: data);
+                case Types.BackgroundJobExecutionFailed:
+                    return Messages.BackgroundJobExecutionFailed(
+                        context: context,
+                        data: data);
+                case Types.BackgroundJobInputFilePathNotConfigured:
+                    return Messages.BackgroundJobInputFilePathNotConfigured(
+                        context: context,
+                        data: data);
+                case Types.BackgroundJobInvalidParameters:
+                    return Messages.BackgroundJobInvalidParameters(
+                        context: context,
+                        data: data);
+                case Types.BackgroundJobNextJobRequestFailed:
+                    return Messages.BackgroundJobNextJobRequestFailed(
+                        context: context,
+                        data: data);
+                case Types.BackgroundJobNoHandler:
+                    return Messages.BackgroundJobNoHandler(
+                        context: context,
+                        data: data);
+                case Types.BackgroundJobOutputFilePathNotConfigured:
+                    return Messages.BackgroundJobOutputFilePathNotConfigured(
+                        context: context,
+                        data: data);
+                case Types.BackgroundJobRecoverOrphanPreparingFailed:
+                    return Messages.BackgroundJobRecoverOrphanPreparingFailed(
+                        context: context,
+                        data: data);
+                case Types.BackgroundJobRecoverStuckFailed:
+                    return Messages.BackgroundJobRecoverStuckFailed(
+                        context: context,
+                        data: data);
+                case Types.BackgroundJobRunningTimedOutCanNotDelete:
+                    return Messages.BackgroundJobRunningTimedOutCanNotDelete(
+                        context: context,
+                        data: data);
+                case Types.BackgroundJobsCancelFailed:
+                    return Messages.BackgroundJobsCancelFailed(
                         context: context,
                         data: data);
                 case Types.BadFormat:
@@ -283,6 +388,10 @@ namespace Implem.Pleasanter.Libraries.General
                     return Messages.ExportNotSetEmail(
                         context: context,
                         data: data);
+                case Types.ExportNotSetSupportFrom:
+                    return Messages.ExportNotSetSupportFrom(
+                        context: context,
+                        data: data);
                 case Types.ExternalMailAddress:
                     return Messages.ExternalMailAddress(
                         context: context,
@@ -295,6 +404,10 @@ namespace Implem.Pleasanter.Libraries.General
                     return Messages.FailedReadFile(
                         context: context,
                         data: data);
+                case Types.FailedSyncAiProviders:
+                    return Messages.FailedSyncAiProviders(
+                        context: context,
+                        data: data);
                 case Types.FailedWriteFile:
                     return Messages.FailedWriteFile(
                         context: context,
@@ -305,6 +418,14 @@ namespace Implem.Pleasanter.Libraries.General
                         data: data);
                 case Types.FormulaExecutionFailed:
                     return Messages.FormulaExecutionFailed(
+                        context: context,
+                        data: data);
+                case Types.GridDataTimeout:
+                    return Messages.GridDataTimeout(
+                        context: context,
+                        data: data);
+                case Types.GridDataUnexpectedError:
+                    return Messages.GridDataUnexpectedError(
                         context: context,
                         data: data);
                 case Types.GroupDepthMax:
@@ -367,6 +488,14 @@ namespace Implem.Pleasanter.Libraries.General
                     return Messages.InternalServerError(
                         context: context,
                         data: data);
+                case Types.InvalidAiProviderSetting:
+                    return Messages.InvalidAiProviderSetting(
+                        context: context,
+                        data: data);
+                case Types.InvalidApiAllowIpAddressRange:
+                    return Messages.InvalidApiAllowIpAddressRange(
+                        context: context,
+                        data: data);
                 case Types.InvalidCsvData:
                     return Messages.InvalidCsvData(
                         context: context,
@@ -423,6 +552,10 @@ namespace Implem.Pleasanter.Libraries.General
                     return Messages.JoeAccountCheck(
                         context: context,
                         data: data);
+                case Types.JsonParseError:
+                    return Messages.JsonParseError(
+                        context: context,
+                        data: data);
                 case Types.LockedRecord:
                     return Messages.LockedRecord(
                         context: context,
@@ -441,6 +574,10 @@ namespace Implem.Pleasanter.Libraries.General
                         data: data);
                 case Types.MailAddressHasNotSet:
                     return Messages.MailAddressHasNotSet(
+                        context: context,
+                        data: data);
+                case Types.NewVersionMustBeNewer:
+                    return Messages.NewVersionMustBeNewer(
                         context: context,
                         data: data);
                 case Types.NoLinks:
@@ -477,6 +614,10 @@ namespace Implem.Pleasanter.Libraries.General
                         data: data);
                 case Types.OverLimitApi:
                     return Messages.OverLimitApi(
+                        context: context,
+                        data: data);
+                case Types.OverLimitForm:
+                    return Messages.OverLimitForm(
                         context: context,
                         data: data);
                 case Types.OverLimitQuantity:
@@ -563,6 +704,10 @@ namespace Implem.Pleasanter.Libraries.General
                     return Messages.ProcessNotFound(
                         context: context,
                         data: data);
+                case Types.RateLimitExceeded:
+                    return Messages.RateLimitExceeded(
+                        context: context,
+                        data: data);
                 case Types.RejectNullImport:
                     return Messages.RejectNullImport(
                         context: context,
@@ -615,6 +760,10 @@ namespace Implem.Pleasanter.Libraries.General
                     return Messages.SelectTargets(
                         context: context,
                         data: data);
+                case Types.ServerConnectionError:
+                    return Messages.ServerConnectionError(
+                        context: context,
+                        data: data);
                 case Types.ServerScriptErrorDetail:
                     return Messages.ServerScriptErrorDetail(
                         context: context,
@@ -627,8 +776,20 @@ namespace Implem.Pleasanter.Libraries.General
                     return Messages.ServerScriptExecutionFailed(
                         context: context,
                         data: data);
+                case Types.ServiceUnavailable:
+                    return Messages.ServiceUnavailable(
+                        context: context,
+                        data: data);
                 case Types.SitesLimit:
                     return Messages.SitesLimit(
+                        context: context,
+                        data: data);
+                case Types.SuspendRequired:
+                    return Messages.SuspendRequired(
+                        context: context,
+                        data: data);
+                case Types.TooLargeFile:
+                    return Messages.TooLargeFile(
                         context: context,
                         data: data);
                 case Types.TooLongText:
@@ -669,6 +830,10 @@ namespace Implem.Pleasanter.Libraries.General
                         data: data);
                 case Types.UsersLimit:
                     return Messages.UsersLimit(
+                        context: context,
+                        data: data);
+                case Types.ValidationError:
+                    return Messages.ValidationError(
                         context: context,
                         data: data);
                 default: return null;

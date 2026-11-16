@@ -1,20 +1,37 @@
 ﻿using Implem.DefinitionAccessor;
 using Implem.Libraries.Utilities;
-using Org.BouncyCastle.Utilities.Zlib;
+using Implem.Pleasanter.Libraries.DataSources.BinaryStorages;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using System;
-using System.Data;
 using System.IO;
 namespace Implem.Pleasanter.Libraries.Images
 {
-    public class ImageData
+    public class ImageData : IDisposable
     {
         public Image Data;
         public long ReferenceId;
         public Types Type;
+        private bool disposed;
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposed) return;
+            if (disposing)
+            {
+                Data?.Dispose();
+                Data = null;
+            }
+            disposed = true;
+        }
 
         public enum Types : int
         {
@@ -45,23 +62,46 @@ namespace Implem.Pleasanter.Libraries.Images
 
         public byte[] Read(SizeTypes sizeType)
         {
+            var provider = BinaryStorageProviderFactory.Create(ProviderName());
+            if (provider != null)
+            {
+                return provider.Download(ObjectName(ReferenceId, Type, sizeType));
+            }
             return Files.Bytes(Path(ReferenceId, Type, sizeType));
         }
 
         public bool Exists(SizeTypes sizeType)
         {
+            var provider = BinaryStorageProviderFactory.Create(ProviderName());
+            if (provider != null)
+            {
+                try
+                {
+                    return provider.Exists(ObjectName(ReferenceId, Type, sizeType));
+                }
+                catch (IOException)
+                {
+                    return false;
+                }
+            }
             return File.Exists(Path(ReferenceId, Type, sizeType));
         }
 
         public DateTime LastWriteTime(SizeTypes sizeType)
         {
-            var file = new FileInfo(Path(
-                referenceId: ReferenceId,
-                type: Type,
-                sizeType: sizeType));
-            return file.Exists
-                ? file.LastWriteTime
-                : DateTime.FromOADate(0);
+            var provider = BinaryStorageProviderFactory.Create(ProviderName());
+            if (provider != null)
+            {
+                try
+                {
+                    return provider.LastWriteTime(ObjectName(ReferenceId, Type, sizeType));
+                }
+                catch (IOException)
+                {
+                    return DateTime.FromOADate(0);
+                }
+            }
+            return DateTime.FromOADate(0);
         }
 
         public void WriteToLocal()
@@ -80,20 +120,51 @@ namespace Implem.Pleasanter.Libraries.Images
 
         private void WriteToLocal(Image image, long referenceId, Types type, SizeTypes sizeType)
         {
-            Files.Write(image, Path(referenceId, type, sizeType), new PngEncoder());
+            var provider = BinaryStorageProviderFactory.Create(ProviderName());
+            if (provider != null)
+            {
+                using var memory = new MemoryStream();
+                image.Save(memory, new PngEncoder());
+                memory.Position = 0;
+                provider.Upload(
+                    objectName: ObjectName(referenceId, type, sizeType),
+                    stream: memory,
+                    contentType: "image/png");
+            }
+            else
+            {
+                Files.Write(image, Path(referenceId, type, sizeType), new PngEncoder());
+            }
         }
 
         public void DeleteLocalFiles()
         {
+            var provider = BinaryStorageProviderFactory.Create(ProviderName());
             if (Type == Types.SiteImage)
             {
-                Files.DeleteFile(Path(ReferenceId, Type, SizeTypes.Regular));
-                Files.DeleteFile(Path(ReferenceId, Type, SizeTypes.Thumbnail));
-                Files.DeleteFile(Path(ReferenceId, Type, SizeTypes.Icon));
+                if (provider != null)
+                {
+                    provider.Delete(ObjectName(ReferenceId, Type, SizeTypes.Regular));
+                    provider.Delete(ObjectName(ReferenceId, Type, SizeTypes.Thumbnail));
+                    provider.Delete(ObjectName(ReferenceId, Type, SizeTypes.Icon));
+                }
+                else
+                {
+                    Files.DeleteFile(Path(ReferenceId, Type, SizeTypes.Regular));
+                    Files.DeleteFile(Path(ReferenceId, Type, SizeTypes.Thumbnail));
+                    Files.DeleteFile(Path(ReferenceId, Type, SizeTypes.Icon));
+                }
             }
             else
             {
-                Files.DeleteFile(Path(ReferenceId, Type, SizeTypes.Logo));
+                if (provider != null)
+                {
+                    provider.Delete(ObjectName(ReferenceId, Type, SizeTypes.Logo));
+                }
+                else
+                {
+                    Files.DeleteFile(Path(ReferenceId, Type, SizeTypes.Logo));
+                }
             }
         }
 
@@ -204,6 +275,17 @@ namespace Implem.Pleasanter.Libraries.Images
                 case SizeTypes.Logo: return Parameters.General.ImageSizeLogo;
                 default: return Parameters.General.ImageSizeRegular;
             }
+        }
+        private string ProviderName()
+        {
+            return Type == Types.SiteImage
+                ? Parameters.BinaryStorage.GetSiteImageProvider()
+                : Parameters.BinaryStorage.Provider;
+        }
+
+        private string ObjectName(long referenceId, Types type, SizeTypes sizeType)
+        {
+            return $"{type}/{referenceId}_{sizeType}.png";
         }
     }
 }
