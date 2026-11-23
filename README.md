@@ -1,18 +1,17 @@
-﻿[![GitHub stars](https://img.shields.io/github/stars/implem/implem.pleasanter)](https://github.com/implem/implem.pleasanter/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/implem/implem.pleasanter)](https://github.com/implem/implem.pleasanter/network)
-[![GitHub issues](https://img.shields.io/github/issues/implem/implem.pleasanter)](https://github.com/implem/implem.pleasanter/issues)
-[![GitHub license](https://img.shields.io/github/license/implem/implem.pleasanter)](https://github.com/implem/implem.pleasanter/blob/master/LICENSE)
-[![Release](https://img.shields.io/github/v/release/implem/implem.pleasanter?label=release&logo=github&style=flat-square)](https://github.com/implem/implem.pleasanter/releases/latest)
-[![Twitter Follow](https://img.shields.io/twitter/follow/pleasanter_oss?style=social)](https://twitter.com/pleasanter_oss)
+﻿[![GitHub stars](https://img.shields.io/github/stars/MiUPa/Implem.Pleasanter)](https://github.com/MiUPa/Implem.Pleasanter/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/MiUPa/Implem.Pleasanter)](https://github.com/MiUPa/Implem.Pleasanter/network)
+[![GitHub issues](https://img.shields.io/github/issues/MiUPa/Implem.Pleasanter)](https://github.com/MiUPa/Implem.Pleasanter/issues)
+[![GitHub license](https://img.shields.io/github/license/MiUPa/Implem.Pleasanter)](https://github.com/MiUPa/Implem.Pleasanter/blob/main/LICENSE)
+[![Release](https://img.shields.io/github/v/release/MiUPa/Implem.Pleasanter?label=release&logo=github&style=flat-square)](https://github.com/MiUPa/Implem.Pleasanter/releases/latest)
 
-![Pleasanter logo](Implem.Pleasanter/wwwroot/images/logo-version.png)
+![Kumitate logo](Implem.Pleasanter/wwwroot/images/logo-version.png)
 
 ## 1. Overview
 
-Pleasanter is an open-source, .NET-based development platform
+Kumitate is an open-source, .NET-based development platform
 for building business applications
 using **no-code and low-code approaches**.
-Pleasanter allows rapid creation of internal systems such as:
+Kumitate allows rapid creation of internal systems such as:
 
 * CRM
 * SFA
@@ -23,6 +22,11 @@ Pleasanter allows rapid creation of internal systems such as:
 
 The platform provides extensibility through **scripts, APIs, and SQL**,
 enabling integration with existing enterprise systems.
+
+> **About this project:** Kumitate is a fork of [Pleasanter®](https://github.com/Implem/Implem.Pleasanter),
+> an open-source low-code development platform developed by Implem Inc.
+> "Pleasanter" is a registered trademark of Implem Inc.
+> Kumitate is an independent project and is not affiliated with or endorsed by Implem Inc.
 
 ## 2. Key Features
 
@@ -231,7 +235,7 @@ Please see: [CONTRIBUTING.md](CONTRIBUTING.md) for development environment setup
 
 ## 8. License
 
-This project is licensed under the [AGPL-3.0 license.](https://github.com/Implem/Implem.Pleasanter/blob/main/LICENSE)
+This project is licensed under the [AGPL-3.0 license.](https://github.com/MiUPa/Implem.Pleasanter/blob/main/LICENSE)
 
 ## 9. Authors
 

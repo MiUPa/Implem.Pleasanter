@@ -3,31 +3,31 @@
     "Type": 110,
     "Languages": [
         {
-            "Body": "Use of Pleasanter demo environment"
+            "Body": "Use of Kumitate demo environment"
         },
         {
             "Language": "zh",
-            "Body": "Pleasanter演示环境的使用"
+            "Body": "Kumitate演示环境的使用"
         },
         {
             "Language": "ja",
-            "Body": "プリザンター デモ環境のご利用について"
+            "Body": "Kumitate デモ環境のご利用について"
         },
         {
             "Language": "de",
-            "Body": "Nutzung der Pleasanter-Demo-Umgebung"
+            "Body": "Nutzung der Kumitate-Demo-Umgebung"
         },
         {
             "Language": "ko",
-            "Body": "Pleasanter 데모 환경 사용"
+            "Body": "Kumitate 데모 환경 사용"
         },
         {
             "Language": "es",
-            "Body": "Uso del entorno de demostración Pleasanter"
+            "Body": "Uso del entorno de demostración Kumitate"
         },
         {
             "Language": "vn",
-            "Body": "Giới thiệu sử dụng môi trường giả lập Pleasanter"
+            "Body": "Giới thiệu sử dụng môi trường giả lập Kumitate"
         }
     ]
 }

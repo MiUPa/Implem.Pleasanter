@@ -3,31 +3,31 @@
     "Type": 110,
     "Languages": [
         {
-            "Body": "Use the following code as the Pleasanter authentication code. \nAuthentication code: [AuthenticationCode]\nThank you for using Pleasanter."
+            "Body": "Use the following code as the Kumitate authentication code. \nAuthentication code: [AuthenticationCode]\nThank you for using Kumitate."
         },
         {
             "Language": "zh",
-            "Body": "使用以下代码作为Pleasanter身份验证代码。 \n验证码：[AuthenticationCode] \n感谢您使用Pleasanter。"
+            "Body": "使用以下代码作为Kumitate身份验证代码。 \n验证码：[AuthenticationCode] \n感谢您使用Kumitate。"
         },
         {
             "Language": "ja",
-            "Body": "Pleasanterの確認コードには、次のコードをお使いください。\ncode: [AuthenticationCode]\nPleasanterのご利用ありがとうございます。"
+            "Body": "Kumitateの確認コードには、次のコードをお使いください。\ncode: [AuthenticationCode]\nKumitateのご利用ありがとうございます。"
         },
         {
             "Language": "de",
-            "Body": "Verwenden Sie den folgenden Code als Pleasanter-Authentifizierungscode. \nAuthentifizierungscode: [AuthenticationCode] \nDanke, dass Sie Pleasanter verwenden. "
+            "Body": "Verwenden Sie den folgenden Code als Kumitate-Authentifizierungscode. \nAuthentifizierungscode: [AuthenticationCode] \nDanke, dass Sie Kumitate verwenden. "
         },
         {
             "Language": "ko",
-            "Body": "다음 코드를 Pleasanter 인증 코드로 사용하십시오. \n 인증 코드 : [AuthenticationCode] \nPleasanter를 이용해 주셔서 감사합니다. "
+            "Body": "다음 코드를 Kumitate 인증 코드로 사용하십시오. \n 인증 코드 : [AuthenticationCode] \nKumitate를 이용해 주셔서 감사합니다. "
         },
         {
             "Language": "es",
-            "Body": "Use el siguiente código como código de autenticación de Pleasanter. \nCódigo de autenticación: [AuthenticationCode] \nGracias por usar Pleasanter. "
+            "Body": "Use el siguiente código como código de autenticación de Kumitate. \nCódigo de autenticación: [AuthenticationCode] \nGracias por usar Kumitate. "
         },
         {
             "Language": "vn",
-            "Body": "Sử dụng mã sau như là mã xác thực Pleasanter. \nMã xác thực: [AuthenticationCode]\nCảm ơn đã sử dụng Pleasanter."
+            "Body": "Sử dụng mã sau như là mã xác thực Kumitate. \nMã xác thực: [AuthenticationCode]\nCảm ơn đã sử dụng Kumitate."
         }
     ]
 }

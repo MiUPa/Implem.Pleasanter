@@ -3,6 +3,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Year>$([System.DateTime]::Now.Year.ToString())</Year>
     <Copyright>Copyright © Implem Inc 2014 - $(Year)</Copyright>
+    <Product>Kumitate</Product>
     <Description>Business application platform</Description>
     <AssemblyName>Implem.Pleasanter</AssemblyName>
     <AssemblyVersion>1.5.9.1</AssemblyVersion>
