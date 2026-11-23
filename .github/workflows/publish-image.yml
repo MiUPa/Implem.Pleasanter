@@ -1,0 +1,108 @@
+name: Publish Kumitate image to GHCR
+
+# Publishes the Kumitate container images to GitHub Container Registry:
+#   ghcr.io/miupa/kumitate:latest        (application)
+#   ghcr.io/miupa/kumitate:<version>     (application, when a version is known)
+#   ghcr.io/miupa/kumitate:codedefiner   (database initialiser)
+#
+# Triggers:
+#   - A GitHub Release is published -> tags "latest" + the release version
+#     (a leading "v", "Kumitate_" or "Pleasanter_" prefix on the tag is stripped).
+#   - Manual workflow_dispatch -> tags "latest", plus the optional version input.
+#
+# Authentication uses the built-in GITHUB_TOKEN (packages: write); no extra
+# secrets are required. This is separate from the upstream Docker Hub
+# workflow (build-docker-images.yml), which is left untouched.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Extra version tag to publish (e.g. 1.0.0). Leave empty to publish only "latest" and "codedefiner".'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  # GHCR image names must be lowercase.
+  IMAGE_NAME: ghcr.io/miupa/kumitate
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Resolve version tag
+        id: ver
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          RAW="${RELEASE_TAG:-$INPUT_VERSION}"
+          VER="${RAW#v}"
+          VER="${VER#Kumitate_}"
+          VER="${VER#Pleasanter_}"
+          echo "version=${VER}" >> "$GITHUB_OUTPUT"
+          echo "Resolved version tag: '${VER}'"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata (Kumitate)
+        id: meta-app
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=${{ steps.ver.outputs.version }},enable=${{ steps.ver.outputs.version != '' }}
+
+      - name: Build and push (Kumitate)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Implem.Pleasanter/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-app.outputs.tags }}
+          labels: ${{ steps.meta-app.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Extract metadata (CodeDefiner)
+        id: meta-cd
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=codedefiner
+
+      - name: Build and push (CodeDefiner)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Implem.CodeDefiner/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-cd.outputs.tags }}
+          labels: ${{ steps.meta-cd.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
