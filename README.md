@@ -245,6 +245,6 @@ Developed by [IMPLEM Inc.](https://implem.co.jp)
 
 ## 10. お問い合わせ / Contact
 
-不具合の報告や機能のご要望は [GitHub Issues](https://github.com/MiUPa/Implem.Pleasanter/issues) へお願いします。個人プロジェクトのため、返信が遅れる場合があります。
+不具合の報告や機能のご要望は [GitHub Issues](https://github.com/MiUPa/Implem.Pleasanter/issues) へお願いします。GitHub アカウントをお持ちでない方は、[Google フォーム](https://forms.gle/Jky4z4nqr9zx3uSc7) からもお問い合わせいただけます。個人プロジェクトのため、返信が遅れる場合があります。
 
-Bug reports and feature requests: please use [GitHub Issues](https://github.com/MiUPa/Implem.Pleasanter/issues). This is a personal project, so replies may be slow.
+Bug reports and feature requests: please use [GitHub Issues](https://github.com/MiUPa/Implem.Pleasanter/issues). If you don't have a GitHub account, you can also reach us via this [Google Form](https://forms.gle/Jky4z4nqr9zx3uSc7). This is a personal project, so replies may be slow.
