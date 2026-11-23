@@ -87,6 +87,8 @@ This section describes how to run Pleasanter locally for evaluation.
 Ensure Docker is installed and running before proceeding.  
 If necessary, run Docker commands with sudo. We use PostgreSQL as a backend database.
 
+> **Note:** The Docker images used below (`implem/pleasanter`) are the official upstream images published by Implem Inc. A Kumitate image is not yet published; to run Kumitate itself, build from this repository's source.
+
 1. Create a directory named "pleasanter" in any location and store two files there.
 
       ```text
@@ -240,3 +242,9 @@ This project is licensed under the [AGPL-3.0 license.](https://github.com/MiUPa/
 ## 9. Authors
 
 Developed by [IMPLEM Inc.](https://implem.co.jp)
+
+## 10. お問い合わせ / Contact
+
+不具合の報告や機能のご要望は [GitHub Issues](https://github.com/MiUPa/Implem.Pleasanter/issues) へお願いします。個人プロジェクトのため、返信が遅れる場合があります。
+
+Bug reports and feature requests: please use [GitHub Issues](https://github.com/MiUPa/Implem.Pleasanter/issues). This is a personal project, so replies may be slow.
