@@ -902,6 +902,16 @@ namespace Implem.Pleasanter.Controllers
         }
 
         [HttpPost]
+        public string SetSiteMenuSort(long id)
+        {
+            var context = new Context();
+            var log = new SysLogModel(context: context);
+            var json = SiteUtilities.SetSiteMenuSort(context: context, siteId: id);
+            log.Finish(context: context, responseSize: json.Length);
+            return json;
+        }
+
+        [HttpPost]
         public string MoveTargetsSourceColumns(int id)
         {
             var context = new Context();
@@ -1378,6 +1388,15 @@ namespace Implem.Pleasanter.Controllers
             var context = new Context();
             var log = new SysLogModel(context: context);
             var json = new ItemModel(context: context, referenceId: id).UpdateByCalendar(context: context);
+            log.Finish(context: context, responseSize: json.Length);
+            return json;
+        }
+
+        public string UpdateByGantt(long id)
+        {
+            var context = new Context();
+            var log = new SysLogModel(context: context);
+            var json = new ItemModel(context: context, referenceId: id).UpdateByGantt(context: context);
             log.Finish(context: context, responseSize: json.Length);
             return json;
         }

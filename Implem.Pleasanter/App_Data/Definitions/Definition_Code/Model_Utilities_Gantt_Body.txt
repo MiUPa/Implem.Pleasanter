@@ -60,7 +60,10 @@
                 inRange: inRange));
 }
 
-public static string GanttJson(Context context, SiteSettings ss)
+public static string GanttJson(
+    Context context,
+    SiteSettings ss,
+    Message message = null)
 {
     if (!ss.EnableViewMode(context: context, name: "Gantt"))
     {
@@ -106,6 +109,7 @@ public static string GanttJson(Context context, SiteSettings ss)
                 ss: ss,
                 view: view,
                 invoke: "drawGantt",
+                message: message,
                 bodyOnly: bodyOnly,
                 bodySelector: "#GanttBody",
                 body: body)

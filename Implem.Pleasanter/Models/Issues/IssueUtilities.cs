@@ -4744,6 +4744,7 @@ namespace Implem.Pleasanter.Models
                 updatedIssueModel.SavedDateHash = new Dictionary<string, DateTime>(before.SavedDateHash ?? new Dictionary<string, DateTime>());
                 updatedIssueModel.SavedDescriptionHash = new Dictionary<string, string>(before.SavedDescriptionHash ?? new Dictionary<string, string>());
                 updatedIssueModel.SavedCheckHash = new Dictionary<string, bool>(before.SavedCheckHash ?? new Dictionary<string, bool>());
+                updatedIssueModel.SavedCheckNullHash = new HashSet<string>(before.SavedCheckNullHash ?? new HashSet<string>());
                 updatedIssueModel.SavedAttachmentsHash = new Dictionary<string, string>(before.SavedAttachmentsHash ?? new Dictionary<string, string>());
             }
         }
@@ -6949,6 +6950,16 @@ namespace Implem.Pleasanter.Models
                 context: context,
                 type: "DeleteWithLinks",
                 sub: sub);
+            var deletedIssueIds = Rds.ExecuteTable(
+                context: context,
+                statements: sub)
+                    .AsEnumerable()
+                    .Select(dataRow => dataRow.Long("IssueId"))
+                    .ToList();
+            LinkedRecordReferenceUtilities.CleanupDeletedReferences(
+                context: context,
+                ss: ss,
+                deletedRecordIds: deletedIssueIds);
             var sites = ss.IntegratedSites?.Any() == true
                 ? ss.AllowedIntegratedSites
                 : ss.SiteId.ToSingleList();
@@ -9392,6 +9403,50 @@ namespace Implem.Pleasanter.Models
                     : null);
         }
 
+        public static string UpdateByGantt(Context context, SiteSettings ss)
+        {
+            var issueModel = new IssueModel(
+                context: context,
+                ss: ss,
+                issueId: context.Forms.Long("Id"),
+                formData: context.Forms);
+            var invalid = IssueValidators.OnUpdating(
+                context: context,
+                ss: ss,
+                issueModel: issueModel);
+            switch (invalid.Type)
+            {
+                case Error.Types.None: break;
+                default: return invalid.MessageJson(context: context);
+            }
+            if (issueModel.AccessStatus != Databases.AccessStatuses.Selected)
+            {
+                return Messages.ResponseDeleteConflicts(context: context).ToJson();
+            }
+            var updated = issueModel.Updated(context: context);
+            if (updated)
+            {
+                issueModel.VerUp = Versions.MustVerUp(
+                    context: context,
+                    ss: ss,
+                    baseModel: issueModel);
+                issueModel.Update(
+                    context: context,
+                    ss: ss,
+                    notice: true);
+            }
+            return GanttJson(
+                context: context,
+                ss: ss,
+                message: updated
+                    ? context.ErrorData.Type != Error.Types.None
+                        ? context.ErrorData.Message(context: context)
+                        : Messages.Updated(
+                            context: context,
+                            data: issueModel.Title.MessageDisplay(context: context))
+                    : null);
+        }
+
         public static string CalendarJson(
             Context context,
             SiteSettings ss,
@@ -10147,7 +10202,10 @@ namespace Implem.Pleasanter.Models
                         inRange: inRange));
         }
 
-        public static string GanttJson(Context context, SiteSettings ss)
+        public static string GanttJson(
+            Context context,
+            SiteSettings ss,
+            Message message = null)
         {
             if (!ss.EnableViewMode(context: context, name: "Gantt"))
             {
@@ -10193,6 +10251,7 @@ namespace Implem.Pleasanter.Models
                         ss: ss,
                         view: view,
                         invoke: "drawGantt",
+                        message: message,
                         bodyOnly: bodyOnly,
                         bodySelector: "#GanttBody",
                         body: body)
