@@ -47,6 +47,20 @@ namespace Implem.DefinitionAccessor
                 Description = "サービス設定（サービス名、タイムゾーン、既定言語、初期パスワード等。一部の項目は起動時に固定）",
                 RequiresRestart = true,
                 ParameterType = typeof(Service)
+            },
+            new Definition
+            {
+                Name = "Notification",
+                Description = "通知設定（メール/Slack/Teams等の通知チャネル有効化）",
+                RequiresRestart = false,
+                ParameterType = typeof(Notification)
+            },
+            new Definition
+            {
+                Name = "Reminder",
+                Description = "リマインダー設定（リマインダーの有効化と通知チャネル）",
+                RequiresRestart = false,
+                ParameterType = typeof(Reminder)
             }
         };
 
