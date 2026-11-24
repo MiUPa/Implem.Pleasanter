@@ -194,6 +194,48 @@ namespace Implem.DefinitionAccessor
                 Description = "AI連携設定（Dify / OpenAI エンドポイント、RAG）",
                 RequiresRestart = false,
                 ParameterType = typeof(AiConnect)
+            },
+            new Definition
+            {
+                Name = "Security",
+                Description = "セキュリティ設定（IP制限、特権ユーザー、パスワードポリシー等。一部は起動時に固定）",
+                RequiresRestart = true,
+                ParameterType = typeof(Security)
+            },
+            new Definition
+            {
+                Name = "Authentication",
+                Description = "認証設定（認証プロバイダ、LDAP、SAML、パスキー。認証スキームの登録は起動時）",
+                RequiresRestart = true,
+                ParameterType = typeof(Authentication)
+            },
+            new Definition
+            {
+                Name = "Api",
+                Description = "API設定（APIの有効化、ページサイズ、サイトあたりの上限）",
+                RequiresRestart = true,
+                ParameterType = typeof(Api)
+            },
+            new Definition
+            {
+                Name = "BackgroundTask",
+                Description = "バックグラウンドタスク設定（実行間隔、検索インデックス作成等。一部は起動時にスケジュール化）",
+                RequiresRestart = true,
+                ParameterType = typeof(BackgroundTask)
+            },
+            new Definition
+            {
+                Name = "BackgroundJobs",
+                Description = "バックグラウンドジョブ設定（キュー、ディスパッチ間隔、タイムアウト）",
+                RequiresRestart = true,
+                ParameterType = typeof(BackgroundJobs)
+            },
+            new Definition
+            {
+                Name = "RateLimit",
+                Description = "レート制限設定（モード、適用パス。ポリシーは起動時に登録）",
+                RequiresRestart = true,
+                ParameterType = typeof(RateLimit)
             }
         };
 
