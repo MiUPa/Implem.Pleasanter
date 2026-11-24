@@ -5,6 +5,7 @@ using Implem.Libraries.Utilities;
 using Implem.Pleasanter.Libraries.DataSources;
 using Implem.Pleasanter.Libraries.DataTypes;
 using Implem.Pleasanter.Libraries.Extensions;
+using Implem.Pleasanter.Libraries.FirstRun;
 using Implem.Pleasanter.Libraries.General;
 using Implem.Pleasanter.Libraries.Html;
 using Implem.Pleasanter.Libraries.HtmlParts;
@@ -5465,6 +5466,12 @@ namespace Implem.Pleasanter.Models
                 returnUrl: returnUrl,
                 createPersistentCookie: createPersistentCookie,
                 noHttpContext: noHttpContext);
+            if (FirstRunUtilities.IsWizardRequired(
+                context: context,
+                userModel: this))
+            {
+                loginAfterUrl = Locations.FirstRun(context: context);
+            }
             if (!context.Authenticated)
             {
                 return Deny(context: context);

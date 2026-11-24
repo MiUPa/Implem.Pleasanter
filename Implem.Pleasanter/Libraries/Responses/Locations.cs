@@ -62,6 +62,28 @@ namespace Implem.Pleasanter.Libraries.Responses
                 });
         }
 
+        public static string FirstRun(Context context)
+        {
+            return Get(
+                context: context,
+                parts: new string[]
+                {
+                    "FirstRun",
+                    "Index"
+                });
+        }
+
+        public static string FirstRunApply(Context context)
+        {
+            return Get(
+                context: context,
+                parts: new string[]
+                {
+                    "FirstRun",
+                    "Apply"
+                });
+        }
+
         public static string UsersEdit(Context context, long id)
         {
             return Get(
