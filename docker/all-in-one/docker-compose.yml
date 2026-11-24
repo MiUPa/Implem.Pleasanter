@@ -1,0 +1,70 @@
+# Kumitate 全部入り Docker（オールインワン配布）
+#
+# このフォルダで `docker compose up -d` を実行するだけで、
+# データベース（PostgreSQL）の構築・DB初期化（CodeDefiner）まで
+# 自動で済み、ブラウザで Kumitate を開けるようになります。
+# 詳しくは同フォルダの README.md を参照してください。
+#
+# 構成:
+#   db         : PostgreSQL（データは named volume に永続化）
+#   init       : CodeDefiner による DB 初期化ジョブ。
+#                起動のたびに実行され、初回は DB を作成し、
+#                2回目以降は定義の差分適用のみ（本家の更新手順と同じ）。
+#                正常終了するまで pleasanter は起動しません。
+#   pleasanter : Kumitate 本体（GHCR の公開イメージ）
+
+name: kumitate
+
+services:
+  db:
+    image: postgres:15
+    container_name: kumitate-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      # 既定パスワードは試用向けの値です。公開環境では .env で必ず変更してください。
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kumitate}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --encoding=UTF-8"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  init:
+    image: ghcr.io/miupa/kumitate:codedefiner
+    container_name: kumitate-init
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      Implem.Pleasanter_Rds_PostgreSQL_SaConnectionString: "Server=db;Database=${POSTGRES_DB:-postgres};UID=${POSTGRES_USER:-postgres};PWD=${POSTGRES_PASSWORD:-kumitate}"
+      Implem.Pleasanter_Rds_PostgreSQL_OwnerConnectionString: "Server=db;Database=#ServiceName#;UID=#ServiceName#_Owner;PWD=${KUMITATE_OWNER_PASSWORD:-kumitate_owner_pw}"
+      Implem.Pleasanter_Rds_PostgreSQL_UserConnectionString: "Server=db;Database=#ServiceName#;UID=#ServiceName#_User;PWD=${KUMITATE_USER_PASSWORD:-kumitate_user_pw}"
+    # 日本語・Asia/Tokyo で初期化し、確認プロンプトは出さない（/y）
+    command: ["_rds", "/l", "ja", "/z", "Asia/Tokyo", "/y"]
+
+  pleasanter:
+    image: ghcr.io/miupa/kumitate:${KUMITATE_VERSION:-latest}
+    container_name: kumitate
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      init:
+        condition: service_completed_successfully
+    ports:
+      - "${KUMITATE_PORT:-8080}:8080"
+    environment:
+      Implem.Pleasanter_Rds_PostgreSQL_SaConnectionString: "Server=db;Database=${POSTGRES_DB:-postgres};UID=${POSTGRES_USER:-postgres};PWD=${POSTGRES_PASSWORD:-kumitate}"
+      Implem.Pleasanter_Rds_PostgreSQL_OwnerConnectionString: "Server=db;Database=#ServiceName#;UID=#ServiceName#_Owner;PWD=${KUMITATE_OWNER_PASSWORD:-kumitate_owner_pw}"
+      Implem.Pleasanter_Rds_PostgreSQL_UserConnectionString: "Server=db;Database=#ServiceName#;UID=#ServiceName#_User;PWD=${KUMITATE_USER_PASSWORD:-kumitate_user_pw}"
+
+volumes:
+  pg_data:
+    name: kumitate_pg_data
