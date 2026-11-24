@@ -61,6 +61,139 @@ namespace Implem.DefinitionAccessor
                 Description = "リマインダー設定（リマインダーの有効化と通知チャネル）",
                 RequiresRestart = false,
                 ParameterType = typeof(Reminder)
+            },
+            new Definition
+            {
+                Name = "Site",
+                Description = "サイト設定（トップ画面の並び順、シンプルモード等）",
+                RequiresRestart = false,
+                ParameterType = typeof(Site)
+            },
+            new Definition
+            {
+                Name = "User",
+                Description = "ユーザー設定（サイト作成・グループ管理等の許可制御）",
+                RequiresRestart = false,
+                ParameterType = typeof(User)
+            },
+            new Definition
+            {
+                Name = "Registration",
+                Description = "ユーザー登録設定（自己登録の有効化、承認依頼先）",
+                RequiresRestart = false,
+                ParameterType = typeof(Registration)
+            },
+            new Definition
+            {
+                Name = "Search",
+                Description = "検索設定（全文検索インデックス、ページサイズ、横断検索）",
+                RequiresRestart = false,
+                ParameterType = typeof(Search)
+            },
+            new Definition
+            {
+                Name = "Validation",
+                Description = "入力検証設定（最大文字数、文字種の正規表現等）",
+                RequiresRestart = false,
+                ParameterType = typeof(Validation)
+            },
+            new Definition
+            {
+                Name = "Permissions",
+                Description = "権限設定（権限パターンの数値定義）",
+                RequiresRestart = false,
+                ParameterType = typeof(Permissions)
+            },
+            new Definition
+            {
+                Name = "History",
+                Description = "履歴設定（履歴の復元・物理削除の可否）",
+                RequiresRestart = false,
+                ParameterType = typeof(History)
+            },
+            new Definition
+            {
+                Name = "Deleted",
+                Description = "削除済みアイテム設定（復元・物理削除の可否）",
+                RequiresRestart = false,
+                ParameterType = typeof(Deleted)
+            },
+            new Definition
+            {
+                Name = "Dashboard",
+                Description = "ダッシュボード設定（タイムライン表示件数等）",
+                RequiresRestart = false,
+                ParameterType = typeof(Dashboard)
+            },
+            new Definition
+            {
+                Name = "Mobile",
+                Description = "モバイル設定（レスポンシブ表示、モバイルカメラ）",
+                RequiresRestart = false,
+                ParameterType = typeof(Mobile)
+            },
+            new Definition
+            {
+                Name = "TextEditorUI",
+                Description = "テキストエディタ設定（リッチテキストエディタのフォント等）",
+                RequiresRestart = false,
+                ParameterType = typeof(TextEditorUI)
+            },
+            new Definition
+            {
+                Name = "Locations",
+                Description = "遷移先URL設定（トップURL、ログイン後の遷移先）",
+                RequiresRestart = false,
+                ParameterType = typeof(Locations)
+            },
+            new Definition
+            {
+                Name = "GroupMembers",
+                Description = "グループメンバー表示形式設定",
+                RequiresRestart = false,
+                ParameterType = typeof(GroupMembers)
+            },
+            new Definition
+            {
+                Name = "GroupChildren",
+                Description = "子グループ表示形式設定",
+                RequiresRestart = false,
+                ParameterType = typeof(GroupChildren)
+            },
+            new Definition
+            {
+                Name = "SysLog",
+                Description = "システムログ設定（保存期間、記録対象イベント）",
+                RequiresRestart = false,
+                ParameterType = typeof(SysLog)
+            },
+            new Definition
+            {
+                Name = "Form",
+                Description = "フォーム設定（公開フォームの有効化、添付ファイル制限）",
+                RequiresRestart = false,
+                ParameterType = typeof(Form)
+            },
+            new Definition
+            {
+                Name = "Script",
+                Description = "スクリプト設定（サーバースクリプトの有効化、タイムアウト）",
+                RequiresRestart = false,
+                ParameterType = typeof(Script)
+            },
+            new Definition
+            {
+                Name = "SummarySync",
+                Description = "集計同期設定（集計の再計算タイミング）",
+                RequiresRestart = false,
+                ParameterType = typeof(SummarySync)
+            },
+            new Definition
+            {
+                Name = "AiConnect",
+                Description = "AI連携設定（Dify / OpenAI エンドポイント、RAG）",
+                RequiresRestart = false,
+                ParameterType = typeof(AiConnect)
             }
         };
 
