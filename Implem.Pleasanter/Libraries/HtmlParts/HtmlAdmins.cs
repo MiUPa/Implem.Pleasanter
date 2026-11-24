@@ -39,6 +39,17 @@ namespace Implem.Pleasanter.Libraries.HtmlParts
                                             .Div(action: () => hb
                                                 .Text(Displays.Parameters(context: context)))),
                                 _using: Permissions.CanManageParameters(context: context))
+                            .Li(
+                                css: "nav-site", action: () => hb
+                                    .A(
+                                        attributes: new HtmlAttributes()
+                                            .Href(Locations.Index(
+                                                context: context,
+                                                controller: "ParameterFiles")),
+                                        action: () => hb
+                                            .Div(action: () => hb
+                                                .Text("パラメータファイル"))),
+                                _using: context.HasPrivilege)
                             .Li(css: "nav-site", action: () => hb
                                 .A(
                                     attributes: new HtmlAttributes()

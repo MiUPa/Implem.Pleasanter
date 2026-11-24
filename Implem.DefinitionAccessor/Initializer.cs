@@ -20,6 +20,8 @@ namespace Implem.DefinitionAccessor
     {
         private static string ParametersPath { get; set; }
 
+        public static string CurrentParametersPath => ParametersPath;
+
         public static List<Exception> Initialize(
             string path,
             string assemblyVersion,
