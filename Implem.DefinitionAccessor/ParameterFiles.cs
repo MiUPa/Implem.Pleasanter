@@ -40,6 +40,13 @@ namespace Implem.DefinitionAccessor
                 Description = "全般設定（HTMLヘッダ、ロゴ、ポータル/ブログ等のリンク先）",
                 RequiresRestart = false,
                 ParameterType = typeof(General)
+            },
+            new Definition
+            {
+                Name = "Service",
+                Description = "サービス設定（サービス名、タイムゾーン、既定言語、初期パスワード等。一部の項目は起動時に固定）",
+                RequiresRestart = true,
+                ParameterType = typeof(Service)
             }
         };
 
