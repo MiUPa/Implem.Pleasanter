@@ -236,6 +236,55 @@ namespace Implem.DefinitionAccessor
                 Description = "レート制限設定（モード、適用パス。ポリシーは起動時に登録）",
                 RequiresRestart = true,
                 ParameterType = typeof(RateLimit)
+            },
+            new Definition
+            {
+                Name = "Session",
+                Description = "セッション設定（保持期間、KVS利用の有無。セッションストアの構成は起動時）",
+                RequiresRestart = true,
+                ParameterType = typeof(Session)
+            },
+            new Definition
+            {
+                Name = "OutputCache",
+                Description = "出力キャッシュ設定（キャッシュ期間。ミドルウェアの構成は起動時）",
+                RequiresRestart = true,
+                ParameterType = typeof(OutputCache)
+            },
+            new Definition
+            {
+                Name = "Quartz",
+                Description = "スケジューラ設定（Quartzクラスタリング等。ホステッドサービスの構成は起動時）",
+                RequiresRestart = true,
+                ParameterType = typeof(Quartz)
+            },
+            new Definition
+            {
+                Name = "BackgroundService",
+                Description = "バックグラウンドサービス設定（リマインダー/LDAP同期のスケジュール。構成は起動時）",
+                RequiresRestart = true,
+                ParameterType = typeof(BackgroundService)
+            },
+            new Definition
+            {
+                Name = "McpServer",
+                Description = "MCPサーバ設定（有効化、読み取り専用モード。エンドポイントの構成は起動時）",
+                RequiresRestart = true,
+                ParameterType = typeof(McpServer)
+            },
+            new Definition
+            {
+                Name = "BinaryStorage",
+                Description = "バイナリストレージ設定（保存先プロバイダ。プロバイダの構成は起動時）",
+                RequiresRestart = true,
+                ParameterType = typeof(BinaryStorage)
+            },
+            new Definition
+            {
+                Name = "MultiTenant",
+                Description = "マルチテナント設定（既定テナント。テナント解決の構成は起動時）",
+                RequiresRestart = true,
+                ParameterType = typeof(MultiTenant)
             }
         };
 
