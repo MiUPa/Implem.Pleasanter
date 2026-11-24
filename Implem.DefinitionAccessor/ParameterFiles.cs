@@ -321,6 +321,8 @@ namespace Implem.DefinitionAccessor
                 error = "内容が空です。";
                 return false;
             }
+            // BOM付きで保存されたファイルから貼り付けた場合などを許容する
+            json = json.TrimStart('\uFEFF');
             try
             {
                 JObject.Parse(json);
