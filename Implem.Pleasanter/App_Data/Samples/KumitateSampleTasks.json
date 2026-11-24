@@ -1,0 +1,1117 @@
+﻿{
+  "HeaderInfo": {
+    "AssemblyVersion": "1.5.9.1",
+    "BaseSiteId": 1,
+    "Server": "http://localhost:59803",
+    "CreatorName": "Administrator",
+    "PackageTime": "2026-11-24T08:24:15.0703287+00:00",
+    "Convertors": [
+      {
+        "SiteId": 1,
+        "SiteTitle": "サンプル",
+        "ReferenceType": "Sites",
+        "IncludeData": true,
+        "Order": "[]"
+      },
+      {
+        "SiteId": 2,
+        "SiteTitle": "タスク管理サンプル",
+        "ReferenceType": "Issues",
+        "IncludeData": true
+      }
+    ],
+    "IncludeSitePermission": false,
+    "IncludeRecordPermission": false,
+    "IncludeColumnPermission": false,
+    "IncludeNotifications": false,
+    "IncludeReminders": false
+  },
+  "Sites": [
+    {
+      "TenantId": 1,
+      "SiteId": 1,
+      "Title": "サンプル",
+      "SiteName": "",
+      "SiteGroupName": "",
+      "Body": "",
+      "GridGuide": "",
+      "EditorGuide": "",
+      "CalendarGuide": "",
+      "CrosstabGuide": "",
+      "GanttGuide": "",
+      "BurnDownGuide": "",
+      "TimeSeriesGuide": "",
+      "AnalyGuide": "",
+      "KambanGuide": "",
+      "ImageLibGuide": "",
+      "ReferenceType": "Sites",
+      "ParentId": 0,
+      "InheritPermission": 1,
+      "SiteSettings": {
+        "Version": 1.017,
+        "ReferenceType": "Sites",
+        "NoDisplayIfReadOnly": false,
+        "NotInheritPermissionsWhenCreatingSite": false
+      },
+      "Publish": false,
+      "DisableCrossSearch": false,
+      "Comments": []
+    },
+    {
+      "TenantId": 1,
+      "SiteId": 2,
+      "Title": "タスク管理サンプル",
+      "SiteName": "",
+      "SiteGroupName": "",
+      "Body": "",
+      "GridGuide": "",
+      "EditorGuide": "",
+      "CalendarGuide": "",
+      "CrosstabGuide": "",
+      "GanttGuide": "",
+      "BurnDownGuide": "",
+      "TimeSeriesGuide": "",
+      "AnalyGuide": "",
+      "KambanGuide": "",
+      "ImageLibGuide": "",
+      "ReferenceType": "Issues",
+      "ParentId": 1,
+      "InheritPermission": 1,
+      "SiteSettings": {
+        "Version": 1.017,
+        "ReferenceType": "Issues",
+        "GridView": 1,
+        "GridColumns": [
+          "IssueId",
+          "ClassA",
+          "ClassB",
+          "TitleBody",
+          "Comments",
+          "Manager",
+          "Owner",
+          "StartTime",
+          "CompletionTime",
+          "ProgressRate",
+          "Status",
+          "Updator",
+          "UpdatedTime"
+        ],
+        "EditorColumnHash": {
+          "General": [
+            "IssueId",
+            "Ver",
+            "Title",
+            "Body",
+            "StartTime",
+            "CompletionTime",
+            "Status",
+            "ClassC",
+            "Manager",
+            "Owner",
+            "ClassA",
+            "ClassB",
+            "AttachmentsA",
+            "Comments"
+          ]
+        },
+        "TitleColumns": [
+          "ClassA",
+          "ClassB",
+          "Title"
+        ],
+        "LinkColumns": [
+          "IssueId",
+          "Title",
+          "StartTime",
+          "CompletionTime",
+          "Status",
+          "Owner",
+          "Updator",
+          "UpdatedTime"
+        ],
+        "HistoryColumns": [
+          "Ver",
+          "Title",
+          "Comments",
+          "StartTime",
+          "CompletionTime",
+          "Status",
+          "Owner",
+          "Updator",
+          "UpdatedTime"
+        ],
+        "Columns": [
+          {
+            "ColumnName": "AttachmentsA",
+            "LabelText": "添付資料"
+          },
+          {
+            "ColumnName": "ClassA",
+            "LabelText": "フェーズ",
+            "ChoicesText": "計画\n設計\n実装\n検証\n公開"
+          },
+          {
+            "ColumnName": "ClassB",
+            "LabelText": "優先度",
+            "ChoicesText": "高\n中\n低"
+          },
+          {
+            "ColumnName": "ClassC",
+            "LabelText": "チーム",
+            "ChoicesText": "チーム1\nチーム2\nチーム3\nチーム4\nチーム5"
+          }
+        ],
+        "Aggregations": [
+          {
+            "Id": 6,
+            "GroupBy": "Status",
+            "Type": 0,
+            "Target": ""
+          },
+          {
+            "Id": 7,
+            "GroupBy": "ClassA",
+            "Type": 0,
+            "Target": ""
+          },
+          {
+            "Id": 8,
+            "GroupBy": "ClassC",
+            "Type": 0,
+            "Target": ""
+          }
+        ],
+        "ViewLatestId": 1,
+        "Views": [
+          {
+            "Id": 1,
+            "Name": "標準",
+            "ApiColumnKeyDisplayType": 0,
+            "ApiColumnValueDisplayType": 0,
+            "CalendarSiteId": 0,
+            "TimeSeriesGroupBy": "Status",
+            "TimeSeriesAggregateType": "Count",
+            "KambanGroupByY": "ClassC",
+            "ApiDataType": 0
+          }
+        ],
+        "EnableBurnDown": false,
+        "TitleSeparator": "）",
+        "NoDisplayIfReadOnly": false,
+        "NotInheritPermissionsWhenCreatingSite": false
+      },
+      "Publish": false,
+      "DisableCrossSearch": false,
+      "Comments": []
+    }
+  ],
+  "Data": [
+    {
+      "Header": [
+        {
+          "SiteId": 2,
+          "SiteTitle": "タスク管理サンプル",
+          "Columns": {
+            "IssueId": "ID",
+            "Title": "Title",
+            "Body": "Body",
+            "TitleBody": "Title/Content",
+            "Comments": "Comments",
+            "StartTime": "Start time",
+            "CompletionTime": "Completion",
+            "ProgressRate": "Progression rate",
+            "Status": "Status",
+            "Manager": "Manager",
+            "Owner": "Owner",
+            "ClassA": "フェーズ",
+            "ClassB": "優先度",
+            "ClassC": "チーム",
+            "AttachmentsA": "添付資料",
+            "Creator": "Created by",
+            "Updator": "Updated by",
+            "UpdatedTime": "Updated on"
+          }
+        }
+      ],
+      "Body": [
+        {
+          "ClassHash": {
+            "ClassA": "公開",
+            "ClassB": "高",
+            "ClassC": ""
+          },
+          "NumHash": {},
+          "DateHash": {},
+          "DescriptionHash": {},
+          "CheckHash": {},
+          "SiteId": 2,
+          "IssueId": 8,
+          "Ver": 1,
+          "Title": {
+            "Id": 8,
+            "Ver": 1,
+            "IsHistory": false,
+            "Value": "本番リリースと運用開始",
+            "DisplayValue": "公開）高）本番リリースと運用開始",
+            "ItemTitle": true
+          },
+          "Body": "本番環境へのリリース作業と、運用開始後の監視を行う。",
+          "StartTime": "2026-12-07T00:00:00",
+          "CompletionTime": {
+            "Status": {
+              "Value": 100
+            },
+            "UpdatedTime": "2026-11-24T08:23:42",
+            "Value": "2026-12-10T00:00:00",
+            "DisplayValue": "2026-12-09T00:00:00Z"
+          },
+          "ProgressRate": {
+            "CreatedTime": "2026-11-24T08:23:42",
+            "StartTime": "2026-12-07T00:00:00",
+            "CompletionTime": "2026-12-10T00:00:00",
+            "Value": 0.0,
+            "UpdatedTime": "2026-11-24T08:23:42"
+          },
+          "Status": {
+            "Value": 100
+          },
+          "Manager": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "Owner": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "Locked": false,
+          "Comments": [],
+          "Creator": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "Updator": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "CreatedTime": {
+            "Value": "2026-11-24T08:23:42",
+            "DisplayValue": "2026-11-24T08:23:42Z"
+          }
+        },
+        {
+          "ClassHash": {
+            "ClassA": "検証",
+            "ClassB": "低",
+            "ClassC": ""
+          },
+          "NumHash": {},
+          "DateHash": {},
+          "DescriptionHash": {},
+          "CheckHash": {},
+          "SiteId": 2,
+          "IssueId": 7,
+          "Ver": 1,
+          "Title": {
+            "Id": 7,
+            "Ver": 1,
+            "IsHistory": false,
+            "Value": "ユーザー受入テスト支援",
+            "DisplayValue": "検証）低）ユーザー受入テスト支援",
+            "ItemTitle": true
+          },
+          "Body": "利用部門の受入テストを支援し、指摘事項を取りまとめる。",
+          "StartTime": "2026-11-30T00:00:00",
+          "CompletionTime": {
+            "Status": {
+              "Value": 100
+            },
+            "UpdatedTime": "2026-11-24T08:23:42",
+            "Value": "2026-12-05T00:00:00",
+            "DisplayValue": "2026-12-04T00:00:00Z"
+          },
+          "ProgressRate": {
+            "CreatedTime": "2026-11-24T08:23:42",
+            "StartTime": "2026-11-30T00:00:00",
+            "CompletionTime": "2026-12-05T00:00:00",
+            "Value": 0.0,
+            "UpdatedTime": "2026-11-24T08:23:42"
+          },
+          "Status": {
+            "Value": 100
+          },
+          "Manager": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "Owner": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "Locked": false,
+          "Comments": [],
+          "Creator": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "Updator": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "CreatedTime": {
+            "Value": "2026-11-24T08:23:42",
+            "DisplayValue": "2026-11-24T08:23:42Z"
+          }
+        },
+        {
+          "ClassHash": {
+            "ClassA": "検証",
+            "ClassB": "中",
+            "ClassC": ""
+          },
+          "NumHash": {},
+          "DateHash": {},
+          "DescriptionHash": {},
+          "CheckHash": {},
+          "SiteId": 2,
+          "IssueId": 6,
+          "Ver": 1,
+          "Title": {
+            "Id": 6,
+            "Ver": 1,
+            "IsHistory": false,
+            "Value": "結合テストと不具合対応",
+            "DisplayValue": "検証）中）結合テストと不具合対応",
+            "ItemTitle": true
+          },
+          "Body": "結合テストを実施し、検出した不具合の修正と再テストを行う。",
+          "StartTime": "2026-11-23T00:00:00",
+          "CompletionTime": {
+            "Status": {
+              "Value": 200
+            },
+            "UpdatedTime": "2026-11-24T08:23:42",
+            "Value": "2026-12-03T00:00:00",
+            "DisplayValue": "2026-12-02T00:00:00Z"
+          },
+          "ProgressRate": {
+            "CreatedTime": "2026-11-24T08:23:42",
+            "StartTime": "2026-11-23T00:00:00",
+            "CompletionTime": "2026-12-03T00:00:00",
+            "Value": 30.0,
+            "UpdatedTime": "2026-11-24T08:23:42"
+          },
+          "Status": {
+            "Value": 200
+          },
+          "Manager": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "Owner": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "Locked": false,
+          "Comments": [],
+          "Creator": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "Updator": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "CreatedTime": {
+            "Value": "2026-11-24T08:23:42",
+            "DisplayValue": "2026-11-24T08:23:42Z"
+          }
+        },
+        {
+          "ClassHash": {
+            "ClassA": "実装",
+            "ClassB": "高",
+            "ClassC": ""
+          },
+          "NumHash": {},
+          "DateHash": {},
+          "DescriptionHash": {},
+          "CheckHash": {},
+          "SiteId": 2,
+          "IssueId": 5,
+          "Ver": 1,
+          "Title": {
+            "Id": 5,
+            "Ver": 1,
+            "IsHistory": false,
+            "Value": "データ移行スクリプト開発",
+            "DisplayValue": "実装）高）データ移行スクリプト開発",
+            "ItemTitle": true
+          },
+          "Body": "旧システムからのデータ移行スクリプトを開発し、検証環境でリハーサルを行う。",
+          "StartTime": "2026-11-16T00:00:00",
+          "CompletionTime": {
+            "Status": {
+              "Value": 200
+            },
+            "UpdatedTime": "2026-11-24T08:23:42",
+            "Value": "2026-11-26T00:00:00",
+            "DisplayValue": "2026-11-25T00:00:00Z"
+          },
+          "ProgressRate": {
+            "CreatedTime": "2026-11-24T08:23:42",
+            "StartTime": "2026-11-16T00:00:00",
+            "CompletionTime": "2026-11-26T00:00:00",
+            "Value": 60.0,
+            "UpdatedTime": "2026-11-24T08:23:42"
+          },
+          "Status": {
+            "Value": 200
+          },
+          "Manager": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "Owner": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "Locked": false,
+          "Comments": [],
+          "Creator": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "Updator": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "CreatedTime": {
+            "Value": "2026-11-24T08:23:42",
+            "DisplayValue": "2026-11-24T08:23:42Z"
+          }
+        },
+        {
+          "ClassHash": {
+            "ClassA": "設計",
+            "ClassB": "中",
+            "ClassC": ""
+          },
+          "NumHash": {},
+          "DateHash": {},
+          "DescriptionHash": {},
+          "CheckHash": {},
+          "SiteId": 2,
+          "IssueId": 4,
+          "Ver": 1,
+          "Title": {
+            "Id": 4,
+            "Ver": 1,
+            "IsHistory": false,
+            "Value": "画面設計とプロトタイプ作成",
+            "DisplayValue": "設計）中）画面設計とプロトタイプ作成",
+            "ItemTitle": true
+          },
+          "Body": "主要画面のワイヤーフレームと操作プロトタイプを作成する。",
+          "StartTime": "2026-11-09T00:00:00",
+          "CompletionTime": {
+            "Status": {
+              "Value": 900
+            },
+            "UpdatedTime": "2026-11-24T08:23:42",
+            "Value": "2026-11-14T00:00:00",
+            "DisplayValue": "2026-11-13T00:00:00Z"
+          },
+          "ProgressRate": {
+            "CreatedTime": "2026-11-24T08:23:42",
+            "StartTime": "2026-11-09T00:00:00",
+            "CompletionTime": "2026-11-14T00:00:00",
+            "Value": 100.0,
+            "UpdatedTime": "2026-11-24T08:23:42"
+          },
+          "Status": {
+            "Value": 900
+          },
+          "Manager": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "Owner": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "Locked": false,
+          "Comments": [],
+          "Creator": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "Updator": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "CreatedTime": {
+            "Value": "2026-11-24T08:23:42",
+            "DisplayValue": "2026-11-24T08:23:42Z"
+          }
+        },
+        {
+          "ClassHash": {
+            "ClassA": "計画",
+            "ClassB": "高",
+            "ClassC": ""
+          },
+          "NumHash": {},
+          "DateHash": {},
+          "DescriptionHash": {},
+          "CheckHash": {},
+          "SiteId": 2,
+          "IssueId": 3,
+          "Ver": 1,
+          "Title": {
+            "Id": 3,
+            "Ver": 1,
+            "IsHistory": false,
+            "Value": "要件定義とヒアリング",
+            "DisplayValue": "計画）高）要件定義とヒアリング",
+            "ItemTitle": true
+          },
+          "Body": "",
+          "StartTime": "2026-11-02T00:00:00",
+          "CompletionTime": {
+            "Status": {
+              "Value": 900
+            },
+            "UpdatedTime": "2026-11-24T08:23:35",
+            "Value": "2026-11-07T00:00:00",
+            "DisplayValue": "2026-11-06T00:00:00Z"
+          },
+          "ProgressRate": {
+            "CreatedTime": "2026-11-24T08:23:35",
+            "StartTime": "2026-11-02T00:00:00",
+            "CompletionTime": "2026-11-07T00:00:00",
+            "Value": 100.0,
+            "UpdatedTime": "2026-11-24T08:23:35"
+          },
+          "Status": {
+            "Value": 900
+          },
+          "Manager": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "Owner": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "Locked": false,
+          "Comments": [],
+          "Creator": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "Updator": {
+            "TenantId": 1,
+            "Id": 1,
+            "DeptId": 0,
+            "Dept": {
+              "TenantId": 0,
+              "Id": 0,
+              "Disabled": false,
+              "Extras": {}
+            },
+            "LoginId": "Administrator",
+            "Name": "Administrator",
+            "UserCode": "",
+            "Body": "",
+            "TenantManager": true,
+            "ServiceManager": false,
+            "AllowCreationAtTopSite": false,
+            "AllowGroupAdministration": false,
+            "AllowGroupCreation": false,
+            "AllowApi": false,
+            "AllowMovingFromTopSite": false,
+            "Disabled": false,
+            "Extras": {}
+          },
+          "CreatedTime": {
+            "Value": "2026-11-24T08:23:35",
+            "DisplayValue": "2026-11-24T08:23:35Z"
+          }
+        }
+      ]
+    }
+  ],
+  "Permissions": [],
+  "PermissionIdList": {
+    "DeptIdList": [],
+    "GroupIdList": [],
+    "UserIdList": [
+      {
+        "UserId": 1,
+        "LoginId": "Administrator",
+        "UserCode": "",
+        "Name": "Administrator"
+      }
+    ]
+  }
+}
