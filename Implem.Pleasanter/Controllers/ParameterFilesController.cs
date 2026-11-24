@@ -17,6 +17,7 @@ namespace Implem.Pleasanter.Controllers
             var log = new SysLogModel(context: context);
             var html = new HtmlBuilder().ParameterFilesIndex(
                 context: context,
+                selectedName: Request.Query["name"].ToString(),
                 message: Request.Query["message"].ToString());
             ViewBag.HtmlBody = html;
             log.Finish(context: context, responseSize: html.Length);
@@ -44,11 +45,14 @@ namespace Implem.Pleasanter.Controllers
                     message: $"Parameter file updated: {name}.json",
                     sysLogType: SysLogModel.SysLogTypes.Info);
             }
+            var definition = ParameterFiles.GetDefinition(name);
             var message = saved
-                ? $"{name}.json を保存し、設定を再読み込みしました。"
+                ? definition?.RequiresRestart == true
+                    ? $"{name}.json を保存しました。再起動後に完全に反映されます。"
+                    : $"{name}.json を保存し、設定を再読み込みしました。"
                 : error;
             log.Finish(context: context, responseSize: 0);
-            return RedirectToAction(nameof(Index), new { message });
+            return RedirectToAction(nameof(Index), new { name, message });
         }
     }
 }

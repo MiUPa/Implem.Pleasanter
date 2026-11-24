@@ -14,6 +14,7 @@ namespace Implem.Pleasanter.Libraries.HtmlParts
         public static string ParameterFilesIndex(
             this HtmlBuilder hb,
             Context context,
+            string selectedName = null,
             string message = null)
         {
             if (!context.HasPrivilege)
@@ -23,10 +24,8 @@ namespace Implem.Pleasanter.Libraries.HtmlParts
                     errorData: new ErrorData(type: Error.Types.HasNotPermission));
             }
             var ss = new SiteSettings();
-            var definition = ParameterFiles.EditableFiles.FirstOrDefault();
-            var json = definition != null
-                ? ParameterFiles.Read(definition.Name) ?? string.Empty
-                : string.Empty;
+            var definition = ParameterFiles.GetDefinition(selectedName)
+                ?? ParameterFiles.EditableFiles.FirstOrDefault();
             var body = new System.Text.StringBuilder();
             body.Append("<div style=\"padding:16px;\">");
             if (!message.IsNullOrEmpty())
@@ -35,11 +34,39 @@ namespace Implem.Pleasanter.Libraries.HtmlParts
                     .Append(HttpUtility.HtmlEncode(message))
                     .Append("</p>");
             }
+            body.Append("<h2>パラメータファイル</h2>");
+            body.Append("<ul>");
+            foreach (var item in ParameterFiles.EditableFiles)
+            {
+                body.Append("<li>");
+                if (definition != null && item.Name == definition.Name)
+                {
+                    body.Append("<strong>")
+                        .Append(HttpUtility.HtmlEncode(item.Name))
+                        .Append(".json</strong>");
+                }
+                else
+                {
+                    body.Append("<a href=\"/parameterfiles/index?name=")
+                        .Append(HttpUtility.UrlEncode(item.Name))
+                        .Append("\">")
+                        .Append(HttpUtility.HtmlEncode(item.Name))
+                        .Append(".json</a>");
+                }
+                body.Append(" - ")
+                    .Append(HttpUtility.HtmlEncode(item.Description))
+                    .Append(item.RequiresRestart
+                        ? "（再起動で反映）"
+                        : "（即時反映）")
+                    .Append("</li>");
+            }
+            body.Append("</ul>");
             if (definition != null)
             {
-                body.Append("<h2>")
+                var json = ParameterFiles.Read(definition.Name) ?? string.Empty;
+                body.Append("<h3>")
                     .Append(HttpUtility.HtmlEncode(definition.Name))
-                    .Append(".json</h2>");
+                    .Append(".json</h3>");
                 body.Append("<p>")
                     .Append(HttpUtility.HtmlEncode(definition.Description))
                     .Append(definition.RequiresRestart
@@ -54,7 +81,9 @@ namespace Implem.Pleasanter.Libraries.HtmlParts
                     .Append(HttpUtility.HtmlEncode(json))
                     .Append("</textarea>");
                 body.Append("<div style=\"margin-top:8px;\">")
-                    .Append("<button type=\"submit\">保存して再読み込み</button>")
+                    .Append(definition.RequiresRestart
+                        ? "<button type=\"submit\">保存</button>"
+                        : "<button type=\"submit\">保存して再読み込み</button>")
                     .Append("</div>");
                 body.Append("</form>");
             }

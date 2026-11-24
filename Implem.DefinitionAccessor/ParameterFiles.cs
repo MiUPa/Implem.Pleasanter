@@ -33,6 +33,13 @@ namespace Implem.DefinitionAccessor
                 Description = "メール送信設定（SMTP / SendGrid / Amazon SES）",
                 RequiresRestart = false,
                 ParameterType = typeof(Mail)
+            },
+            new Definition
+            {
+                Name = "General",
+                Description = "全般設定（HTMLヘッダ、ロゴ、ポータル/ブログ等のリンク先）",
+                RequiresRestart = false,
+                ParameterType = typeof(General)
             }
         };
 
