@@ -356,6 +356,11 @@ namespace Implem.DefinitionAccessor
             {
                 return false;
             }
+            // 検証時に取り除いた BOM がファイル側に残ると、書き込み時に
+            // ファイル自体の BOM と重なって二重 BOM となり、保存直後の
+            // 再読み込み（SetParameters）がそのファイルを読めずに失敗する。
+            // 検証した内容と書き込む内容を一致させるため、ここでも取り除く。
+            json = json.TrimStart('\uFEFF');
             var path = FilePath(name);
             var current = Files.Read(path);
             if (current != null)
@@ -378,6 +383,59 @@ namespace Implem.DefinitionAccessor
             }
             error = null;
             return true;
+        }
+
+        /// <summary>
+        /// 特権ユーザー（Security.json の PrivilegedUsers）が未登録かどうか。
+        /// DBパッチ適用後の実効値で判定する（ファイルが空でもパッチで
+        /// 登録済みの環境ではブートストラップは不要なため）。
+        /// </summary>
+        public static bool PrivilegedUsersIsEmpty()
+        {
+            var privilegedUsers = Parameters.Security.PrivilegedUsers;
+            return privilegedUsers == null || privilegedUsers.Count == 0;
+        }
+
+        /// <summary>
+        /// 最初の特権ユーザーを登録する（ブートストラップ）。
+        /// 特権ユーザーが未登録の場合にのみ実行でき、書き込みは通常の
+        /// 保存経路（検証・バックアップ・再読み込み）を通す。
+        /// 呼び出し側で「テナント管理者本人であること」を確認済みである前提。
+        /// </summary>
+        public static bool BootstrapPrivilegedUser(string loginId, out string error)
+        {
+            error = null;
+            if (loginId.IsNullOrEmpty())
+            {
+                error = "ログインIDが取得できませんでした。";
+                return false;
+            }
+            if (!PrivilegedUsersIsEmpty())
+            {
+                error = "特権ユーザーは既に登録されています。";
+                return false;
+            }
+            var json = Read("Security");
+            if (json.IsNullOrEmpty())
+            {
+                error = "Security.json を読み取れませんでした。";
+                return false;
+            }
+            JObject security;
+            try
+            {
+                security = JObject.Parse(json.TrimStart('\uFEFF'));
+            }
+            catch (Exception e)
+            {
+                error = $"Security.json の解析に失敗しました: {e.Message}";
+                return false;
+            }
+            security["PrivilegedUsers"] = new JArray(loginId);
+            return Save(
+                "Security",
+                security.ToString(Formatting.Indented),
+                out error);
         }
     }
 }

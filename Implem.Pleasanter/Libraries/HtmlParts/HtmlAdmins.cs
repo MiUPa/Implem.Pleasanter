@@ -49,7 +49,9 @@ namespace Implem.Pleasanter.Libraries.HtmlParts
                                         action: () => hb
                                             .Div(action: () => hb
                                                 .Text("パラメータファイル"))),
-                                _using: context.HasPrivilege)
+                                _using: context.HasPrivilege
+                                    || HtmlParameterFiles.CanBootstrapPrivilegedUser(
+                                        context: context))
                             .Li(css: "nav-site", action: () => hb
                                 .A(
                                     attributes: new HtmlAttributes()

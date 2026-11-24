@@ -54,5 +54,33 @@ namespace Implem.Pleasanter.Controllers
             log.Finish(context: context, responseSize: 0);
             return RedirectToAction(nameof(Index), new { name, message });
         }
+
+        [HttpPost]
+        public ActionResult Bootstrap()
+        {
+            var context = new Context();
+            var log = new SysLogModel(context: context);
+            if (!HtmlParameterFiles.CanBootstrapPrivilegedUser(context: context))
+            {
+                log.Finish(context: context, responseSize: 0);
+                return RedirectToAction(nameof(Index));
+            }
+            var registered = ParameterFiles.BootstrapPrivilegedUser(
+                context.LoginId,
+                out var error);
+            if (registered)
+            {
+                new SysLogModel(
+                    context: context,
+                    method: nameof(Bootstrap),
+                    message: $"First privileged user registered: {context.LoginId}",
+                    sysLogType: SysLogModel.SysLogTypes.Info);
+            }
+            var message = registered
+                ? $"特権ユーザーに {context.LoginId} を登録しました。"
+                : error;
+            log.Finish(context: context, responseSize: 0);
+            return RedirectToAction(nameof(Index), new { message });
+        }
     }
 }
